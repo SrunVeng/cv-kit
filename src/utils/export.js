@@ -48,23 +48,6 @@ export async function downloadResumePdf(element, fileName) {
   pdf.save(`${slugify(fileName)}.pdf`);
 }
 
-export function exportResumeJson(payload, fileName) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${slugify(fileName)}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-export async function readResumeJson(file) {
-  const text = await file.text();
-  return JSON.parse(text);
-}
-
 function slugify(value) {
   return value
     .toLowerCase()

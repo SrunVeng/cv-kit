@@ -1,16 +1,14 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Award,
   BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
   Download,
-  FileDown,
   FolderKanban,
   GraduationCap,
   ImagePlus,
   RefreshCcw,
-  Upload,
   UserRound,
 } from 'lucide-react';
 import { Field, TextareaField } from './components/FormFields.jsx';
@@ -22,8 +20,8 @@ import TemplatePicker from './components/TemplatePicker.jsx';
 import TopBar from './components/TopBar.jsx';
 import { sampleResume } from './data/sampleResume.js';
 import { templates } from './data/templates.js';
-import { downloadResumePdf, exportResumeJson, readResumeJson } from './utils/export.js';
-import { createEntry, normalizeImportedResume } from './utils/resume.js';
+import { downloadResumePdf } from './utils/export.js';
+import { createEntry } from './utils/resume.js';
 
 const defaultStyle = {
   templateId: 'modern',
@@ -106,6 +104,7 @@ function App() {
   const [resume, setResume] = useState(sampleResume);
   const [style, setStyle] = useState(defaultStyle);
   const [isExporting, setIsExporting] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const previewRef = useRef(null);
 
@@ -118,6 +117,19 @@ function App() {
   const isPreviewStep = currentStepData.id === 'preview';
   const showSidePreview = !['template', 'preview'].includes(currentStepData.id);
   const progressPercent = ((currentStep + 1) / wizardSteps.length) * 100;
+
+  useEffect(() => {
+    if (!isResetConfirmOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsResetConfirmOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isResetConfirmOpen]);
 
   const updatePersonal = (field, value) => {
     setResume((current) => ({
@@ -172,17 +184,6 @@ function App() {
     reader.readAsDataURL(file);
   };
 
-  const handleImportJson = async (file) => {
-    if (!file) return;
-
-    const imported = await readResumeJson(file);
-    setResume(normalizeImportedResume(imported.resume));
-    if (imported.style) {
-      setStyle((current) => ({ ...current, ...imported.style }));
-    }
-    setCurrentStep(wizardSteps.length - 1);
-  };
-
   const handleExportPdf = async () => {
     if (!previewRef.current || isExporting) return;
 
@@ -194,14 +195,11 @@ function App() {
     }
   };
 
-  const handleExportJson = () => {
-    exportResumeJson({ resume, style }, resume.personal.fullName || 'resume');
-  };
-
   const handleReset = () => {
     setResume(sampleResume);
     setStyle(defaultStyle);
     setCurrentStep(0);
+    setIsResetConfirmOpen(false);
   };
 
   const goBack = () => {
@@ -233,27 +231,54 @@ function App() {
         ]
       : []),
     {
-      label: 'Export JSON',
-      shortLabel: 'JSON',
-      icon: FileDown,
-      onClick: handleExportJson,
-    },
-    {
-      label: 'Import',
-      icon: Upload,
-      fileAccept: 'application/json',
-      onFile: handleImportJson,
-    },
-    {
-      label: 'Reset',
+      label: 'Start Over',
+      shortLabel: 'Reset',
       icon: RefreshCcw,
-      onClick: handleReset,
+      onClick: () => setIsResetConfirmOpen(true),
+      variant: 'danger',
     },
   ];
 
   return (
     <div className="app-shell">
       <TopBar actions={topActions} />
+
+      {isResetConfirmOpen && (
+        <div className="confirm-backdrop" role="presentation" onClick={() => setIsResetConfirmOpen(false)}>
+          <section
+            className="confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="reset-confirm-title"
+            aria-describedby="reset-confirm-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="confirm-icon danger" aria-hidden="true">
+              <RefreshCcw size={22} />
+            </span>
+            <div className="confirm-copy">
+              <p className="eyebrow">Reset CV</p>
+              <h2 id="reset-confirm-title">Start over?</h2>
+              <p id="reset-confirm-description">
+                This will replace your current edits with the sample CV and return to step 1.
+              </p>
+            </div>
+            <div className="confirm-actions">
+              <button
+                className="confirm-button subtle"
+                type="button"
+                autoFocus
+                onClick={() => setIsResetConfirmOpen(false)}
+              >
+                No
+              </button>
+              <button className="confirm-button danger" type="button" onClick={handleReset}>
+                Yes, reset
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <main className="wizard-layout">
         <aside className="wizard-sidebar" aria-label="Resume steps">

@@ -16,24 +16,7 @@ function TopBar({ actions }) {
       <div className="top-actions" aria-label="Document actions">
         {actions.map((action) => {
           const Icon = action.icon;
-          const className = `action-button ${action.variant === 'primary' ? 'primary' : ''}`;
-
-          if (action.fileAccept) {
-            return (
-              <label className={className} key={action.label} title={action.label}>
-                <Icon size={18} aria-hidden="true" />
-                <span data-short-label={action.shortLabel || action.label}>{action.label}</span>
-                <input
-                  type="file"
-                  accept={action.fileAccept}
-                  onChange={(event) => {
-                    action.onFile(event.target.files?.[0]);
-                    event.target.value = '';
-                  }}
-                />
-              </label>
-            );
-          }
+          const className = ['action-button', action.variant].filter(Boolean).join(' ');
 
           return (
             <button
