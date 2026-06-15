@@ -1763,7 +1763,7 @@ input[type="file"] {
   order: 1;
 }
 
-.template-classic {
+.resume-page.template-classic {
   font-family: Georgia, "Times New Roman", serif;
   border: 1px solid rgba(23, 32, 51, 0.16);
   box-shadow: 0 24px 70px rgba(23, 32, 51, 0.14);
@@ -1942,7 +1942,7 @@ input[type="file"] {
   background: #f7fafc;
 }
 
-.template-editorial {
+.resume-page.template-editorial {
   font-family: Georgia, "Times New Roman", serif;
 }
 
@@ -2001,7 +2001,7 @@ input[type="file"] {
   display: none;
 }
 
-.template-code {
+.resume-page.template-code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   border-top: 12px solid #111827;
 }
@@ -2606,4 +2606,231 @@ input[type="file"] {
 .template-preview-scale .item-title-row .inline-meta-row {
   justify-content: flex-end;
   text-align: right;
+}
+
+.template-preview-scale .template-boardroom .cv-hero,
+.template-preview-scale .template-classic .cv-hero {
+  text-align: center;
+}
+
+.resume-export-scope .resume-page {
+  --page-pad: 44px;
+  --section-gap: 24px;
+  --body-gap: 30px;
+  width: 816px;
+  max-width: none;
+  min-height: 1120px;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.resume-export-scope .resume-page.density-relaxed {
+  --page-pad: 52px;
+  --section-gap: 30px;
+  --body-gap: 36px;
+  font-size: 15px;
+}
+
+.resume-export-scope .resume-page.density-compact {
+  --page-pad: 34px;
+  --section-gap: 18px;
+  --body-gap: 22px;
+  font-size: 12.7px;
+}
+
+.resume-export-scope .cv-hero {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  text-align: left;
+}
+
+.resume-export-scope .cv-photo-wrap {
+  width: 116px;
+  height: 116px;
+  border-radius: 28px;
+  font-size: 2.2rem;
+}
+
+.resume-export-scope .cv-title-block h1 {
+  font-size: 3.05em;
+  line-height: 1.02;
+}
+
+.resume-export-scope .template-executive .cv-title-block h1 {
+  font-size: 3.25em;
+}
+
+.resume-export-scope .template-minimal .cv-title-block h1 {
+  font-size: 2.72em;
+}
+
+.resume-export-scope .cv-body {
+  grid-template-columns: 228px minmax(0, 1fr);
+  padding-top: 30px;
+}
+
+.resume-export-scope .template-executive .cv-hero {
+  grid-template-columns: 1fr;
+  text-align: center;
+}
+
+.resume-export-scope .template-executive .cv-body {
+  grid-template-columns: minmax(0, 1fr) 210px;
+}
+
+.resume-export-scope .template-executive .cv-sidebar {
+  order: 2;
+  padding-left: 22px;
+  border-left: 1px solid rgba(23, 32, 51, 0.12);
+}
+
+.resume-export-scope .template-executive .cv-main {
+  order: 1;
+}
+
+.resume-export-scope .template-corporate .cv-sidebar {
+  padding: 18px;
+  border-left: 5px solid var(--accent);
+}
+
+.resume-export-scope .template-boardroom .cv-hero,
+.resume-export-scope .template-classic .cv-hero,
+.resume-export-scope .template-clean .cv-hero,
+.resume-export-scope .template-editorial .cv-hero {
+  grid-template-columns: 1fr;
+}
+
+.resume-export-scope .template-boardroom .cv-hero,
+.resume-export-scope .template-classic .cv-hero {
+  text-align: center;
+}
+
+.resume-export-scope .template-boardroom .cv-title-block h1 {
+  font-size: 3.28em;
+}
+
+.resume-export-scope .template-boardroom .cv-body {
+  grid-template-columns: minmax(0, 1fr) 224px;
+}
+
+.resume-export-scope .template-boardroom .cv-sidebar,
+.resume-export-scope .template-clean .cv-sidebar {
+  order: 2;
+}
+
+.resume-export-scope .template-boardroom .cv-main,
+.resume-export-scope .template-clean .cv-main {
+  order: 1;
+}
+
+.resume-export-scope .template-classic .cv-title-block h1 {
+  font-size: 3em;
+}
+
+.resume-export-scope .template-metro .cv-hero {
+  padding: 24px;
+}
+
+.resume-export-scope .template-metro .cv-photo-wrap {
+  width: 94px;
+  height: 94px;
+  border-radius: 12px;
+}
+
+.resume-export-scope .template-edge .cv-hero {
+  padding: 36px var(--page-pad);
+}
+
+.resume-export-scope .template-portfolio .cv-sidebar {
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.resume-export-scope .template-portfolio .cv-section {
+  padding: 14px;
+}
+
+.resume-export-scope .template-bold {
+  padding-left: 64px;
+}
+
+.resume-export-scope .template-bold .cv-photo-wrap {
+  width: 132px;
+  height: 132px;
+  border-radius: 10px;
+}
+
+.resume-export-scope .template-bold .cv-title-block h1 {
+  font-size: 3.28em;
+}
+
+.resume-export-scope .template-clean .cv-body {
+  grid-template-columns: minmax(0, 1fr) 214px;
+}
+
+.resume-export-scope .template-editorial .cv-title-block h1 {
+  font-size: 3.52em;
+}
+
+.resume-export-scope .template-editorial .cv-body {
+  grid-template-columns: 246px minmax(0, 1fr);
+}
+
+.resume-export-scope .template-system .cv-hero,
+.resume-export-scope .template-technical .cv-hero {
+  padding: 24px;
+}
+
+.resume-export-scope .template-system .cv-section,
+.resume-export-scope .template-technical .cv-section {
+  padding: 14px;
+}
+
+.resume-export-scope .template-compact .cv-hero,
+.resume-export-scope .template-minimal .cv-hero {
+  grid-template-columns: 1fr;
+}
+
+.resume-export-scope .template-compact .cv-body {
+  grid-template-columns: 194px minmax(0, 1fr);
+  padding-top: 22px;
+}
+
+.resume-export-scope .template-creative .cv-hero {
+  padding: 38px var(--page-pad);
+}
+
+.resume-export-scope .template-creative .cv-sidebar {
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.resume-export-scope .item-title-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.resume-export-scope .item-title-row .inline-meta-row {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.template-preview-scale .template-executive,
+.resume-export-scope .template-executive {
+  --body-gap: 42px;
+}
+
+.template-preview-scale .template-corporate,
+.resume-export-scope .template-corporate {
+  --body-gap: 34px;
+}
+
+.template-preview-scale .template-metro,
+.resume-export-scope .template-metro {
+  --body-gap: 28px;
+}
+
+.template-preview-scale .template-system,
+.resume-export-scope .template-system {
+  --body-gap: 24px;
 }

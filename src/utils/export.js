@@ -20,12 +20,15 @@ export async function downloadResumePdf(element, fileName) {
       windowWidth: exportViewportWidth,
       windowHeight: Math.max(element.scrollHeight, exportPageMinHeight),
       onclone: (clonedDocument) => {
+        clonedDocument.body.classList.add('resume-export-scope');
+
         const clonedElement = clonedDocument.querySelector(`[data-export-target="${exportTarget}"]`);
         if (!clonedElement) return;
 
         clonedElement.style.width = `${exportPageWidth}px`;
         clonedElement.style.maxWidth = 'none';
         clonedElement.style.minHeight = `${exportPageMinHeight}px`;
+        clonedElement.style.height = 'auto';
         clonedElement.style.margin = '0';
         clonedElement.style.boxShadow = 'none';
       },
