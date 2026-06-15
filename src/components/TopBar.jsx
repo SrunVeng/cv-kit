@@ -8,8 +8,8 @@ function TopBar({ actions }) {
           <FileText size={22} />
         </span>
         <div>
-          <p className="eyebrow">CraftCV</p>
-          <h1>Resume Builder</h1>
+          <p className="eyebrow">Khmer-CV</p>
+          <h1>CV Builder</h1>
         </div>
       </div>
 

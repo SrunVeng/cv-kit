@@ -1,8 +1,8 @@
 const factories = {
   experience: () => ({
     id: crypto.randomUUID(),
-    role: 'New role',
-    company: 'Company',
+    role: '',
+    company: '',
     location: '',
     start: '',
     end: '',
@@ -11,8 +11,8 @@ const factories = {
   }),
   education: () => ({
     id: crypto.randomUUID(),
-    degree: 'Degree or program',
-    school: 'School',
+    degree: '',
+    school: '',
     location: '',
     start: '',
     end: '',
@@ -20,7 +20,7 @@ const factories = {
   }),
   projects: () => ({
     id: crypto.randomUUID(),
-    name: 'Project name',
+    name: '',
     role: '',
     start: '',
     end: '',
@@ -29,7 +29,7 @@ const factories = {
   }),
   certifications: () => ({
     id: crypto.randomUUID(),
-    title: 'Certification',
+    title: '',
     issuer: '',
     year: '',
   }),
@@ -37,4 +37,26 @@ const factories = {
 
 export function createEntry(section) {
   return factories[section] ? factories[section]() : { id: crypto.randomUUID() };
+}
+
+export function createEmptyResume() {
+  return {
+    personal: {
+      fullName: '',
+      headline: '',
+      email: '',
+      phoneCountry: 'US',
+      phone: '',
+      location: '',
+      website: '',
+      summary: '',
+      photo: '',
+    },
+    skills: [],
+    languages: [],
+    experience: [createEntry('experience')],
+    education: [createEntry('education')],
+    projects: [createEntry('projects')],
+    certifications: [createEntry('certifications')],
+  };
 }

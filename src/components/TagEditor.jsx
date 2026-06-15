@@ -1,7 +1,7 @@
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
-function TagEditor({ title, eyebrow, tags, onChange }) {
+function TagEditor({ title, eyebrow, tags, onChange, placeholder }) {
   const [draft, setDraft] = useState('');
 
   const addTag = () => {
@@ -54,7 +54,7 @@ function TagEditor({ title, eyebrow, tags, onChange }) {
         <input
           type="text"
           value={draft}
-          placeholder={`Add ${title.toLowerCase()}`}
+          placeholder={placeholder || `Add ${title.toLowerCase()}`}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {

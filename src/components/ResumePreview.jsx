@@ -210,7 +210,7 @@ function MetaRow({ items, small = false }) {
   return (
     <Tag className="inline-meta-row">
       {items.map((item, index) => (
-        <span key={`${item}-${index}`}>{item}</span>
+        <span key={`${item}-${index}`}>{formatMetaValue(item)}</span>
       ))}
     </Tag>
   );
@@ -232,6 +232,18 @@ function hasAnyPersonalContact(personal) {
 
 function hasText(value) {
   return String(value ?? '').trim().length > 0;
+}
+
+function formatMetaValue(value) {
+  const text = String(value ?? '').trim();
+  const monthMatch = text.match(/^(\d{4})-(\d{2})$/);
+  if (!monthMatch) return text;
+
+  const date = new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1);
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 }
 
 function initials(name) {

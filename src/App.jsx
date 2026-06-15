@@ -9,9 +9,11 @@ import {
   GraduationCap,
   ImagePlus,
   RefreshCcw,
+  Sparkles,
+  Trash2,
   UserRound,
 } from 'lucide-react';
-import { Field, TextareaField } from './components/FormFields.jsx';
+import { Field, PhoneField, TextareaField } from './components/FormFields.jsx';
 import ResumePreview from './components/ResumePreview.jsx';
 import SectionEditor from './components/SectionEditor.jsx';
 import StyleControls from './components/StyleControls.jsx';
@@ -20,14 +22,28 @@ import TemplatePicker from './components/TemplatePicker.jsx';
 import TopBar from './components/TopBar.jsx';
 import { sampleResume } from './data/sampleResume.js';
 import { templates } from './data/templates.js';
+import { generateResumeText, getSmartGeneratorName } from './utils/ai.js';
 import { downloadResumePdf } from './utils/export.js';
-import { createEntry } from './utils/resume.js';
+import { createEmptyResume, createEntry } from './utils/resume.js';
 
 const defaultStyle = {
   templateId: 'modern',
   accentColor: '#0f766e',
   fontPairing: 'sans',
   density: 'comfortable',
+};
+
+const defaultAiAssistant = {
+  isOpen: false,
+  isLoading: false,
+  error: '',
+  result: '',
+  tone: 'professional',
+  length: 'medium',
+  prompt: '',
+  statusText: '',
+  progress: null,
+  config: null,
 };
 
 const wizardSteps = [
@@ -50,12 +66,12 @@ const sectionConfigs = {
     eyebrow: 'Work',
     icon: BriefcaseBusiness,
     fields: [
-      { key: 'role', label: 'Role' },
-      { key: 'company', label: 'Company' },
-      { key: 'location', label: 'Location' },
-      { key: 'start', label: 'Start' },
-      { key: 'end', label: 'End' },
-      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3 },
+      { key: 'role', label: 'Role', placeholder: 'e.g. Senior Product Designer' },
+      { key: 'company', label: 'Company', placeholder: 'e.g. Northstar Labs' },
+      { key: 'location', label: 'Location', placeholder: 'e.g. Remote or Phnom Penh' },
+      { key: 'start', label: 'Start date', type: 'month' },
+      { key: 'end', label: 'End date', type: 'month', allowPresent: true },
+      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3, placeholder: 'Describe the role in one short sentence.' },
       { key: 'highlights', label: 'Highlights', type: 'list', rows: 4 },
     ],
   },
@@ -65,12 +81,12 @@ const sectionConfigs = {
     eyebrow: 'Learning',
     icon: GraduationCap,
     fields: [
-      { key: 'degree', label: 'Degree' },
-      { key: 'school', label: 'School' },
-      { key: 'location', label: 'Location' },
-      { key: 'start', label: 'Start' },
-      { key: 'end', label: 'End' },
-      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3 },
+      { key: 'degree', label: 'Degree', placeholder: 'e.g. B.S. Computer Science' },
+      { key: 'school', label: 'School', placeholder: 'e.g. University name' },
+      { key: 'location', label: 'Location', placeholder: 'e.g. Phnom Penh, Cambodia' },
+      { key: 'start', label: 'Start date', type: 'month' },
+      { key: 'end', label: 'End date', type: 'month', allowPresent: true },
+      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3, placeholder: 'Add coursework, focus area, or honors.' },
     ],
   },
   projects: {
@@ -79,11 +95,11 @@ const sectionConfigs = {
     eyebrow: 'Portfolio',
     icon: FolderKanban,
     fields: [
-      { key: 'name', label: 'Project name' },
-      { key: 'role', label: 'Role' },
-      { key: 'start', label: 'Start' },
-      { key: 'end', label: 'End' },
-      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3 },
+      { key: 'name', label: 'Project name', placeholder: 'e.g. Portfolio Website' },
+      { key: 'role', label: 'Role', placeholder: 'e.g. Designer and developer' },
+      { key: 'start', label: 'Start date', type: 'month' },
+      { key: 'end', label: 'End date', type: 'month', allowPresent: true },
+      { key: 'summary', label: 'Summary', type: 'textarea', rows: 3, placeholder: 'Explain what the project does and why it matters.' },
       { key: 'highlights', label: 'Highlights', type: 'list', rows: 3 },
     ],
   },
@@ -93,18 +109,19 @@ const sectionConfigs = {
     eyebrow: 'Proof',
     icon: Award,
     fields: [
-      { key: 'title', label: 'Title' },
-      { key: 'issuer', label: 'Issuer' },
-      { key: 'year', label: 'Year' },
+      { key: 'title', label: 'Title', placeholder: 'e.g. AWS Certified Developer' },
+      { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Amazon Web Services' },
+      { key: 'year', label: 'Year', placeholder: 'e.g. 2026' },
     ],
   },
 };
 
 function App() {
-  const [resume, setResume] = useState(sampleResume);
+  const [resume, setResume] = useState(() => createEmptyResume());
   const [style, setStyle] = useState(defaultStyle);
   const [isExporting, setIsExporting] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [aiAssistant, setAiAssistant] = useState(defaultAiAssistant);
   const [currentStep, setCurrentStep] = useState(0);
   const previewRef = useRef(null);
 
@@ -117,6 +134,7 @@ function App() {
   const isPreviewStep = currentStepData.id === 'preview';
   const showSidePreview = !['template', 'preview'].includes(currentStepData.id);
   const progressPercent = ((currentStep + 1) / wizardSteps.length) * 100;
+  const filledSteps = useMemo(() => getFilledSteps(resume, style), [resume, style]);
 
   useEffect(() => {
     if (!isResetConfirmOpen) return undefined;
@@ -196,10 +214,78 @@ function App() {
   };
 
   const handleReset = () => {
-    setResume(sampleResume);
+    setResume(createEmptyResume());
     setStyle(defaultStyle);
     setCurrentStep(0);
     setIsResetConfirmOpen(false);
+  };
+
+  const openAiAssistant = (config) => {
+    setAiAssistant({
+      ...defaultAiAssistant,
+      isOpen: true,
+      config,
+    });
+  };
+
+  const closeAiAssistant = () => {
+    if (aiAssistant.isLoading) return;
+    setAiAssistant(defaultAiAssistant);
+  };
+
+  const handleGenerateText = async () => {
+    if (!aiAssistant.config || aiAssistant.isLoading) return;
+
+    try {
+      setAiAssistant((current) => ({
+        ...current,
+        isLoading: true,
+        error: '',
+        statusText: 'Creating suggestion...',
+        progress: 1,
+      }));
+      const text = await generateResumeText(
+        {
+          type: aiAssistant.config.type,
+          label: aiAssistant.config.label,
+          currentValue: aiAssistant.config.currentValue,
+          context: aiAssistant.config.context,
+          tone: aiAssistant.tone,
+          length: aiAssistant.length,
+          prompt: aiAssistant.prompt,
+        },
+        {
+          onProgress: ({ text: statusText, progress }) => {
+            setAiAssistant((current) => ({
+              ...current,
+              statusText: statusText || current.statusText,
+              progress: typeof progress === 'number' ? progress : current.progress,
+            }));
+          },
+        },
+      );
+      setAiAssistant((current) => ({
+        ...current,
+        isLoading: false,
+        result: text,
+        statusText: 'Suggestion ready.',
+        progress: 1,
+      }));
+    } catch (error) {
+      setAiAssistant((current) => ({
+        ...current,
+        isLoading: false,
+        progress: null,
+        statusText: '',
+        error: error.message || 'Unable to generate text.',
+      }));
+    }
+  };
+
+  const handleApplyGeneratedText = () => {
+    if (!aiAssistant.result.trim() || !aiAssistant.config?.onApply) return;
+    aiAssistant.config.onApply(aiAssistant.result.trim());
+    setAiAssistant(defaultAiAssistant);
   };
 
   const goBack = () => {
@@ -218,21 +304,9 @@ function App() {
   };
 
   const topActions = [
-    ...(isPreviewStep
-      ? [
-          {
-            label: isExporting ? 'Preparing PDF' : 'Download PDF',
-            shortLabel: 'PDF',
-            icon: Download,
-            onClick: handleExportPdf,
-            disabled: isExporting,
-            variant: 'primary',
-          },
-        ]
-      : []),
     {
       label: 'Start Over',
-      shortLabel: 'Reset',
+      shortLabel: 'Start Over',
       icon: RefreshCcw,
       onClick: () => setIsResetConfirmOpen(true),
       variant: 'danger',
@@ -260,7 +334,7 @@ function App() {
               <p className="eyebrow">Reset CV</p>
               <h2 id="reset-confirm-title">Start over?</h2>
               <p id="reset-confirm-description">
-                This will replace your current edits with the sample CV and return to step 1.
+                This will clear your current edits and return to a blank CV at step 1.
               </p>
             </div>
             <div className="confirm-actions">
@@ -279,6 +353,16 @@ function App() {
           </section>
         </div>
       )}
+
+      {aiAssistant.isOpen ? (
+        <AiAssistantDialog
+          assistant={aiAssistant}
+          onChange={setAiAssistant}
+          onClose={closeAiAssistant}
+          onGenerate={handleGenerateText}
+          onApply={handleApplyGeneratedText}
+        />
+      ) : null}
 
       <main className="wizard-layout">
         <aside className="wizard-sidebar" aria-label="Resume steps">
@@ -299,6 +383,7 @@ function App() {
                   'wizard-step-button',
                   index === currentStep ? 'active' : '',
                   index < currentStep ? 'complete' : '',
+                  filledSteps[step.id] ? 'filled' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -325,9 +410,7 @@ function App() {
               {renderStepContent({
                 activeTemplate,
                 currentStepId: currentStepData.id,
-                handleExportPdf,
                 handlePhotoUpload,
-                isExporting,
                 previewRef,
                 resume,
                 style,
@@ -337,6 +420,7 @@ function App() {
                 updateTags,
                 addItem,
                 removeItem,
+                openAiAssistant,
               })}
             </div>
 
@@ -387,9 +471,7 @@ function App() {
 function renderStepContent({
   activeTemplate,
   currentStepId,
-  handleExportPdf,
   handlePhotoUpload,
-  isExporting,
   previewRef,
   resume,
   style,
@@ -399,7 +481,10 @@ function renderStepContent({
   updateTags,
   addItem,
   removeItem,
+  openAiAssistant,
 }) {
+  const resumeContext = getResumeContext(resume);
+
   switch (currentStepId) {
     case 'template':
       return (
@@ -407,7 +492,7 @@ function renderStepContent({
           templates={templates}
           activeTemplateId={style.templateId}
           onChange={updateStyle}
-          resume={resume}
+          resume={sampleResume}
           style={style}
         />
       );
@@ -420,10 +505,24 @@ function renderStepContent({
               <h2 id="identity-heading">Name</h2>
             </div>
           </div>
-          <PhotoUploader personal={resume.personal} onPhotoUpload={handlePhotoUpload} />
+          <PhotoUploader
+            personal={resume.personal}
+            onPhotoUpload={handlePhotoUpload}
+            onRemovePhoto={() => updatePersonal('photo', '')}
+          />
           <div className="field-grid">
-            <Field label="Full name" value={resume.personal.fullName} onChange={(value) => updatePersonal('fullName', value)} />
-            <Field label="Headline" value={resume.personal.headline} onChange={(value) => updatePersonal('headline', value)} />
+            <Field
+              label="Full name"
+              value={resume.personal.fullName}
+              placeholder={sampleResume.personal.fullName}
+              onChange={(value) => updatePersonal('fullName', value)}
+            />
+            <Field
+              label="Headline"
+              value={resume.personal.headline}
+              placeholder={sampleResume.personal.headline}
+              onChange={(value) => updatePersonal('headline', value)}
+            />
           </div>
         </section>
       );
@@ -437,10 +536,32 @@ function renderStepContent({
             </div>
           </div>
           <div className="field-grid">
-            <Field label="Email" value={resume.personal.email} onChange={(value) => updatePersonal('email', value)} />
-            <Field label="Phone" value={resume.personal.phone} onChange={(value) => updatePersonal('phone', value)} />
-            <Field label="Location" value={resume.personal.location} onChange={(value) => updatePersonal('location', value)} />
-            <Field label="Website" value={resume.personal.website} onChange={(value) => updatePersonal('website', value)} />
+            <Field
+              label="Email"
+              value={resume.personal.email}
+              placeholder={sampleResume.personal.email}
+              onChange={(value) => updatePersonal('email', value)}
+            />
+            <PhoneField
+              label="Phone"
+              value={resume.personal.phone}
+              placeholder="415 555 0184"
+              countryCode={resume.personal.phoneCountry}
+              onCountryChange={(value) => updatePersonal('phoneCountry', value)}
+              onChange={(value) => updatePersonal('phone', value)}
+            />
+            <Field
+              label="Location"
+              value={resume.personal.location}
+              placeholder={sampleResume.personal.location}
+              onChange={(value) => updatePersonal('location', value)}
+            />
+            <Field
+              label="Website"
+              value={resume.personal.website}
+              placeholder={sampleResume.personal.website}
+              onChange={(value) => updatePersonal('website', value)}
+            />
           </div>
         </section>
       );
@@ -458,8 +579,23 @@ function renderStepContent({
               label="Professional summary"
               value={resume.personal.summary}
               onChange={(value) => updatePersonal('summary', value)}
+              placeholder={sampleResume.personal.summary}
               rows={7}
               className="profile-summary-field"
+              action={
+                <AiFieldButton
+                  label="Generate professional summary"
+                  onClick={() =>
+                    openAiAssistant({
+                      type: 'professional-summary',
+                      label: 'Professional summary',
+                      currentValue: resume.personal.summary,
+                      context: resumeContext,
+                      onApply: (text) => updatePersonal('summary', text),
+                    })
+                  }
+                />
+              }
             />
           </div>
         </section>
@@ -471,12 +607,14 @@ function renderStepContent({
             title="Skills"
             eyebrow="Capabilities"
             tags={resume.skills}
+            placeholder={`e.g. ${sampleResume.skills.slice(0, 3).join(', ')}`}
             onChange={(tags) => updateTags('skills', tags)}
           />
           <TagEditor
             title="Languages"
             eyebrow="Communication"
             tags={resume.languages}
+            placeholder={`e.g. ${sampleResume.languages.join(', ')}`}
             onChange={(tags) => updateTags('languages', tags)}
           />
         </>
@@ -489,6 +627,9 @@ function renderStepContent({
           onChange={updateItem}
           onAdd={addItem}
           onRemove={removeItem}
+          onGenerateText={openAiAssistant}
+          resumeContext={resumeContext}
+          sampleItems={sampleResume.experience}
         />
       );
     case 'education':
@@ -499,6 +640,9 @@ function renderStepContent({
           onChange={updateItem}
           onAdd={addItem}
           onRemove={removeItem}
+          onGenerateText={openAiAssistant}
+          resumeContext={resumeContext}
+          sampleItems={sampleResume.education}
         />
       );
     case 'extras':
@@ -510,6 +654,9 @@ function renderStepContent({
             onChange={updateItem}
             onAdd={addItem}
             onRemove={removeItem}
+            onGenerateText={openAiAssistant}
+            resumeContext={resumeContext}
+            sampleItems={sampleResume.projects}
           />
           <SectionEditor
             {...sectionConfigs.certifications}
@@ -517,6 +664,7 @@ function renderStepContent({
             onChange={updateItem}
             onAdd={addItem}
             onRemove={removeItem}
+            sampleItems={sampleResume.certifications}
           />
         </>
       );
@@ -535,12 +683,6 @@ function renderStepContent({
           <div className="preview-stage wizard-preview-stage">
             <ResumePreview ref={previewRef} resume={resume} style={style} template={activeTemplate} />
           </div>
-          <div className="preview-download-row">
-            <button className="wizard-nav-button primary" type="button" onClick={handleExportPdf} disabled={isExporting}>
-              <Download size={18} aria-hidden="true" />
-              <span>{isExporting ? 'Preparing PDF' : 'Download PDF'}</span>
-            </button>
-          </div>
         </section>
       );
     default:
@@ -548,33 +690,216 @@ function renderStepContent({
   }
 }
 
-function PhotoUploader({ personal, onPhotoUpload }) {
+function AiFieldButton({ label, onClick }) {
   return (
-    <label className="photo-uploader">
-      <span className="photo-frame">
-        {personal.photo ? (
-          <img src={personal.photo} alt="" />
-        ) : (
-          <span className="photo-placeholder" aria-hidden="true">
-            <UserRound size={34} />
-          </span>
-        )}
-      </span>
-      <span>
-        <strong>Upload photo</strong>
-        <small>PNG, JPG, or WEBP</small>
-      </span>
-      <ImagePlus size={20} aria-hidden="true" />
-      <input
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        onChange={(event) => {
-          onPhotoUpload(event.target.files?.[0]);
-          event.target.value = '';
-        }}
-      />
-    </label>
+    <button
+      className="ai-field-button"
+      type="button"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
+      title={label}
+    >
+      <Sparkles size={14} aria-hidden="true" />
+      <span>Suggest</span>
+    </button>
   );
+}
+
+function AiAssistantDialog({ assistant, onChange, onClose, onGenerate, onApply }) {
+  const generatedText = String(assistant.result ?? '');
+  const hasResult = generatedText.trim().length > 0;
+  const progressPercent = typeof assistant.progress === 'number' ? Math.round(assistant.progress * 100) : null;
+
+  return (
+    <div className="ai-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="ai-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="ai-dialog-header">
+          <span className="ai-dialog-icon" aria-hidden="true">
+            <Sparkles size={22} />
+          </span>
+          <div>
+            <p className="eyebrow">{getSmartGeneratorName()}</p>
+            <h2 id="ai-dialog-title">{assistant.config?.label ?? 'Generate resume text'}</h2>
+          </div>
+        </div>
+
+        {assistant.statusText ? (
+          <div className="ai-status" aria-live="polite">
+            <div>
+              <span>{assistant.statusText}</span>
+              {progressPercent == null ? null : <strong>{progressPercent}%</strong>}
+            </div>
+            {progressPercent == null ? null : (
+              <div className="ai-status-bar" aria-hidden="true">
+                <span style={{ width: `${progressPercent}%` }} />
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <div className="ai-control-grid">
+          <div className="ai-control">
+            <span>Tone</span>
+            <div className="ai-segmented">
+              {['professional', 'confident', 'friendly'].map((tone) => (
+                <button
+                  className={assistant.tone === tone ? 'active' : ''}
+                  type="button"
+                  key={tone}
+                  onClick={() => onChange((current) => ({ ...current, tone }))}
+                >
+                  {tone}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ai-control">
+            <span>Length</span>
+            <div className="ai-segmented">
+              {['short', 'medium', 'detailed'].map((length) => (
+                <button
+                  className={assistant.length === length ? 'active' : ''}
+                  type="button"
+                  key={length}
+                  onClick={() => onChange((current) => ({ ...current, length }))}
+                >
+                  {length}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <label className="ai-notes">
+          <span>Notes for suggestion</span>
+          <textarea
+            value={assistant.prompt}
+            placeholder="Example: focus on React, leadership, and measurable impact."
+            rows={3}
+            onChange={(event) => onChange((current) => ({ ...current, prompt: event.target.value }))}
+          />
+        </label>
+
+        {assistant.error ? <p className="ai-error">{assistant.error}</p> : null}
+
+        {hasResult ? (
+          <label className="ai-result">
+            <span>Generated text</span>
+            <textarea
+              value={generatedText}
+              rows={assistant.config?.type?.includes('highlights') ? 5 : 4}
+              onChange={(event) => onChange((current) => ({ ...current, result: event.target.value }))}
+            />
+          </label>
+        ) : null}
+
+        <div className="ai-actions">
+          <button className="confirm-button subtle" type="button" onClick={onClose} disabled={assistant.isLoading}>
+            Cancel
+          </button>
+          <button className="confirm-button subtle" type="button" onClick={onGenerate} disabled={assistant.isLoading}>
+            {assistant.isLoading ? 'Generating...' : hasResult ? 'Regenerate' : 'Generate'}
+          </button>
+          <button className="confirm-button primary" type="button" onClick={onApply} disabled={!hasResult || assistant.isLoading}>
+            Insert
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto }) {
+  return (
+    <div className="photo-uploader">
+      <label className="photo-uploader-target">
+        <span className="photo-frame">
+          {personal.photo ? (
+            <img src={personal.photo} alt="" />
+          ) : (
+            <span className="photo-placeholder" aria-hidden="true">
+              <UserRound size={34} />
+            </span>
+          )}
+        </span>
+        <span>
+          <strong>{personal.photo ? 'Change photo' : 'Upload photo'}</strong>
+          <small>JPG or PNG, square image works best.</small>
+        </span>
+        <ImagePlus size={20} aria-hidden="true" />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            onPhotoUpload(event.target.files?.[0]);
+            event.target.value = '';
+          }}
+        />
+      </label>
+      {personal.photo ? (
+        <button className="photo-remove-button" type="button" onClick={onRemovePhoto}>
+          <Trash2 size={16} aria-hidden="true" />
+          <span>Remove</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function getFilledSteps(resume, style) {
+  return {
+    template: hasText(style.templateId),
+    identity: [resume.personal.fullName, resume.personal.headline, resume.personal.photo].some(hasText),
+    contact: [resume.personal.email, resume.personal.phone, resume.personal.location, resume.personal.website].some(hasText),
+    summary: hasText(resume.personal.summary),
+    skills: hasListValue(resume.skills) || hasListValue(resume.languages),
+    experience: hasSectionValue(resume.experience, ['role', 'company', 'location', 'start', 'end', 'summary', 'highlights']),
+    education: hasSectionValue(resume.education, ['degree', 'school', 'location', 'start', 'end', 'summary']),
+    extras:
+      hasSectionValue(resume.projects, ['name', 'role', 'start', 'end', 'summary', 'highlights']) ||
+      hasSectionValue(resume.certifications, ['title', 'issuer', 'year']),
+    style: [style.accentColor, style.fontPairing, style.density].some(hasText),
+    preview: false,
+  };
+}
+
+function hasSectionValue(items, keys) {
+  return Array.isArray(items) && items.some((item) => keys.some((key) => hasListValue(item[key]) || hasText(item[key])));
+}
+
+function hasListValue(value) {
+  return Array.isArray(value) && value.some(hasText);
+}
+
+function hasText(value) {
+  return String(value ?? '').trim().length > 0;
+}
+
+function getResumeContext(resume) {
+  return {
+    personal: {
+      fullName: resume.personal.fullName,
+      headline: resume.personal.headline,
+      location: resume.personal.location,
+      summary: resume.personal.summary,
+    },
+    skills: resume.skills,
+    languages: resume.languages,
+    experience: resume.experience.slice(0, 4),
+    education: resume.education.slice(0, 3),
+    projects: resume.projects.slice(0, 3),
+    certifications: resume.certifications.slice(0, 4),
+  };
 }
 
 export default App;

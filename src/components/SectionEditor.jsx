@@ -1,7 +1,20 @@
-import { Plus, Trash2 } from 'lucide-react';
-import { Field, TextareaField } from './FormFields.jsx';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
+import { Field, MonthField, TextareaField } from './FormFields.jsx';
 
-function SectionEditor({ title, eyebrow, icon: Icon, section, items, fields, onChange, onAdd, onRemove }) {
+function SectionEditor({
+  title,
+  eyebrow,
+  icon: Icon,
+  section,
+  items,
+  fields,
+  onChange,
+  onAdd,
+  onRemove,
+  onGenerateText,
+  resumeContext,
+  sampleItems = [],
+}) {
   return (
     <section className="editor-section" aria-labelledby={`${section}-heading`}>
       <div className="section-title-row">
@@ -32,13 +45,37 @@ function SectionEditor({ title, eyebrow, icon: Icon, section, items, fields, onC
 
             <div className="field-grid">
               {fields.map((field) => {
+                const placeholder = getFieldPlaceholder(field, sampleItems[index] ?? sampleItems[0]);
+
                 if (field.type === 'textarea') {
                   return (
                     <TextareaField
                       key={field.key}
                       label={field.label}
                       value={item[field.key]}
+                      placeholder={placeholder}
                       rows={field.rows}
+                      action={
+                        onGenerateText ? (
+                          <AiFieldButton
+                            label={`Generate ${field.label}`}
+                            onClick={() =>
+                              onGenerateText({
+                                type: `${section}-${field.key}`,
+                                label: `${title} ${index + 1} ${field.label}`,
+                                currentValue: item[field.key] ?? '',
+                                context: {
+                                  section,
+                                  field: field.key,
+                                  item,
+                                  resume: resumeContext,
+                                },
+                                onApply: (text) => onChange(section, item.id, { [field.key]: text }),
+                              })
+                            }
+                          />
+                        ) : null
+                      }
                       onChange={(value) => onChange(section, item.id, { [field.key]: value })}
                     />
                   );
@@ -50,7 +87,35 @@ function SectionEditor({ title, eyebrow, icon: Icon, section, items, fields, onC
                       key={field.key}
                       label={field.label}
                       value={(item[field.key] ?? []).join('\n')}
+                      placeholder={placeholder}
                       rows={field.rows ?? 4}
+                      action={
+                        onGenerateText ? (
+                          <AiFieldButton
+                            label={`Generate ${field.label}`}
+                            onClick={() =>
+                              onGenerateText({
+                                type: `${section}-${field.key}`,
+                                label: `${title} ${index + 1} ${field.label}`,
+                                currentValue: (item[field.key] ?? []).join('\n'),
+                                context: {
+                                  section,
+                                  field: field.key,
+                                  item,
+                                  resume: resumeContext,
+                                },
+                                onApply: (text) =>
+                                  onChange(section, item.id, {
+                                    [field.key]: text
+                                      .split('\n')
+                                      .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+                                      .filter(Boolean),
+                                  }),
+                              })
+                            }
+                          />
+                        ) : null
+                      }
                       onChange={(value) =>
                         onChange(section, item.id, {
                           [field.key]: value.split('\n'),
@@ -60,12 +125,24 @@ function SectionEditor({ title, eyebrow, icon: Icon, section, items, fields, onC
                   );
                 }
 
+                if (field.type === 'month') {
+                  return (
+                    <MonthField
+                      key={field.key}
+                      label={field.label}
+                      value={item[field.key]}
+                      allowPresent={field.allowPresent}
+                      onChange={(value) => onChange(section, item.id, { [field.key]: value })}
+                    />
+                  );
+                }
+
                 return (
                   <Field
                     key={field.key}
                     label={field.label}
                     value={item[field.key]}
-                    placeholder={field.placeholder}
+                    placeholder={placeholder}
                     onChange={(value) => onChange(section, item.id, { [field.key]: value })}
                   />
                 );
@@ -75,6 +152,34 @@ function SectionEditor({ title, eyebrow, icon: Icon, section, items, fields, onC
         ))}
       </div>
     </section>
+  );
+}
+
+function getFieldPlaceholder(field, sampleItem) {
+  const sampleValue = sampleItem?.[field.key];
+
+  if (Array.isArray(sampleValue)) {
+    return sampleValue.length ? sampleValue.join('\n') : field.placeholder ?? 'One bullet point per line';
+  }
+
+  return sampleValue || field.placeholder || 'Add details';
+}
+
+function AiFieldButton({ label, onClick }) {
+  return (
+    <button
+      className="ai-field-button"
+      type="button"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
+      title={label}
+    >
+      <Sparkles size={14} aria-hidden="true" />
+      <span>Suggest</span>
+    </button>
   );
 }
 
