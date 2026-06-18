@@ -818,7 +818,27 @@ function renderStepContent({
         </>
       );
     case 'style':
-      return <StyleControls style={style} onChange={updateStyle} />;
+      return (
+        <>
+          <section className="style-responsive-preview" aria-label="Live style preview">
+            <div className="preview-toolbar compact">
+              <div>
+                <p className="eyebrow">Live style preview</p>
+                <h2>{activeTemplate.name}</h2>
+              </div>
+              <span className="template-pill">{style.density}</span>
+            </div>
+            <div className="preview-stage style-preview-stage resume-export-scope print-preview-scope">
+              <ResumePreview
+                resume={previewResume}
+                style={style}
+                template={activeTemplate}
+              />
+            </div>
+          </section>
+          <StyleControls style={style} onChange={updateStyle} />
+        </>
+      );
     case 'preview':
       return (
         <section className="preview-workspace wizard-preview-workspace" aria-label="Resume preview">
@@ -829,7 +849,7 @@ function renderStepContent({
             </div>
             <span className="template-pill">{activeTemplate.tone}</span>
           </div>
-          <div className="preview-stage wizard-preview-stage">
+          <div className="preview-stage wizard-preview-stage resume-export-scope print-preview-scope">
             <ResumePreview
               ref={previewRef}
               resume={previewResume}

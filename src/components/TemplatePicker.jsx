@@ -261,7 +261,7 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
               </button>
             </header>
 
-            <div className="template-large-preview-stage">
+            <div className="template-large-preview-stage resume-export-scope print-preview-scope">
               <ResumePreview
                 resume={resume}
                 style={previewStyle}

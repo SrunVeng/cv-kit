@@ -1129,6 +1129,33 @@ input[type="file"] {
   min-width: 0;
 }
 
+.style-responsive-preview {
+  display: none;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(23, 32, 51, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 45px rgba(23, 32, 51, 0.09);
+  backdrop-filter: blur(14px);
+}
+
+.style-responsive-preview .preview-toolbar {
+  margin-bottom: 0;
+}
+
+.style-responsive-preview .template-pill {
+  text-transform: capitalize;
+}
+
+.style-preview-stage {
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
 .preview-toolbar.compact {
   margin-bottom: 0;
 }
@@ -1393,6 +1420,7 @@ input[type="file"] {
 .editor-section {
   min-width: 0;
   padding: 18px;
+  z-index: 10;
   border: 1px solid rgba(23, 32, 51, 0.1);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
@@ -3938,6 +3966,17 @@ input[type="file"] {
     display: none;
   }
 
+  .style-responsive-preview {
+    position: sticky;
+    top: 88px;
+    z-index: 8;
+    display: grid;
+  }
+
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 1;
+  }
+
   .wizard-step-list {
     grid-template-columns: repeat(5, minmax(132px, 1fr));
     overflow: visible;
@@ -5215,4 +5254,66 @@ input[type="file"] {
   width: 88px;
   height: 88px;
   border-radius: 10px;
+}
+
+/* Keep interactive previews identical to the fixed 816px PDF canvas. */
+.print-preview-scope {
+  justify-items: center;
+}
+
+@media (max-width: 420px) {
+  .style-preview-stage.print-preview-scope .resume-page,
+  .wizard-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.38;
+  }
+
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.26;
+  }
+}
+
+@media (min-width: 421px) and (max-width: 520px) {
+  .style-preview-stage.print-preview-scope .resume-page,
+  .template-large-preview-stage.print-preview-scope .resume-page,
+  .wizard-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.46;
+  }
+
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.36;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 640px) {
+  .style-preview-stage.print-preview-scope .resume-page,
+  .template-large-preview-stage.print-preview-scope .resume-page,
+  .wizard-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.58;
+  }
+
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.48;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 760px) {
+  .style-preview-stage.print-preview-scope .resume-page,
+  .template-large-preview-stage.print-preview-scope .resume-page,
+  .wizard-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.68;
+  }
+
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.6;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .style-preview-stage.print-preview-scope .resume-page {
+    zoom: 0.78;
+  }
+}
+
+body.resume-export-scope .resume-page {
+  zoom: 1 !important;
 }
