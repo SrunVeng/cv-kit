@@ -52,6 +52,7 @@ function StyleControls({ style, onChange }) {
               className={style.fontPairing === font.id ? 'active' : ''}
               onClick={() => onChange('fontPairing', font.id)}
               title={font.description}
+              aria-pressed={style.fontPairing === font.id}
             >
               {font.label}
             </button>
@@ -71,6 +72,7 @@ function StyleControls({ style, onChange }) {
               key={option.id}
               className={style.density === option.id ? 'active' : ''}
               onClick={() => onChange('density', option.id)}
+              aria-pressed={style.density === option.id}
             >
               {option.label}
             </button>

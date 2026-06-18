@@ -1,4 +1,11 @@
-import { ExternalLink, HeartHandshake, X } from 'lucide-react';
+import {
+  Download,
+  ExternalLink,
+  HeartHandshake,
+  LayoutTemplate,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import abaQr from '../assets/donation-aba.jpg';
 import khqrQr from '../assets/donation-khqr.jpg';
@@ -10,6 +17,8 @@ const paymentMethods = [
     account: 'Veng Srun',
     image: khqrQr,
     alt: 'KHQR donation code for Veng Srun',
+    width: 1044,
+    height: 1514,
   },
   {
     id: 'aba',
@@ -17,6 +26,8 @@ const paymentMethods = [
     account: 'Srun Veng',
     image: abaQr,
     alt: 'ABA Bank KHQR donation code for Srun Veng',
+    width: 1730,
+    height: 2445,
   },
 ];
 
@@ -88,81 +99,133 @@ function DonationDialog({ isOpen, onClose }) {
             <HeartHandshake size={23} />
           </span>
           <div>
-            <p className="eyebrow">Support the developer</p>
-            <h2 id="donation-title">Support Khmer-CV</h2>
+            <p className="eyebrow">Pay it forward</p>
+            <h2 id="donation-title">Help keep Khmer-CV free</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close donation dialog" autoFocus>
             <X size={20} aria-hidden="true" />
           </button>
         </header>
 
-        <div className="donation-appreciation" id="donation-description">
-          <p>
-            Thank you for supporting Khmer-CV. Your contribution helps keep the builder free,
-            improve its templates, and support continued development.
-          </p>
-          <p lang="km">
-            សូមអរគុណចំពោះការគាំទ្រ Khmer-CV។ ការរួមចំណែករបស់អ្នកជួយឱ្យកម្មវិធីនេះបន្តប្រើប្រាស់ដោយឥតគិតថ្លៃ
-            កែលម្អគំរូ CV និងបន្តការអភិវឌ្ឍឱ្យកាន់តែប្រសើរ។
-          </p>
-        </div>
-
-        <div className="donation-method-tabs" role="tablist" aria-label="Donation payment method">
-          {paymentMethods.map((method) => (
-            <button
-              className={method.id === activeMethod.id ? 'active' : ''}
-              type="button"
-              key={method.id}
-              onClick={() => setActiveMethodId(method.id)}
-              role="tab"
-              aria-selected={method.id === activeMethod.id}
-              aria-controls="donation-payment-panel"
-            >
-              <strong>{method.label}</strong>
-              <span>{method.account}</span>
-            </button>
-          ))}
-        </div>
-
-        <div
-          className="donation-payment-panel"
-          id="donation-payment-panel"
-          role="tabpanel"
-          aria-label={`${activeMethod.label} donation QR`}
-        >
-          <div className="donation-payment-heading">
-            <div>
-              <p className="eyebrow">Scan to contribute</p>
-              <h3>{activeMethod.label}</h3>
+        <div className="donation-content">
+          <div className="donation-story">
+            <div className="donation-appreciation" id="donation-description">
+              <p className="eyebrow">Built for the community</p>
+              <h3>A small gift can help the next job seeker.</h3>
+              <p>
+                If Khmer-CV made your job search a little easier, your support helps keep the
+                builder accessible and improving for everyone.
+              </p>
+              <p lang="km">
+                បើ Khmer-CV បានជួយឱ្យការស្វែងរកការងាររបស់អ្នកកាន់តែងាយស្រួល
+                ការគាំទ្ររបស់អ្នកនឹងជួយឱ្យកម្មវិធីនេះបន្តឥតគិតថ្លៃ និងកាន់តែប្រសើរសម្រាប់មនុស្សគ្រប់គ្នា។
+              </p>
             </div>
-            <span>{activeMethod.account}</span>
+
+            <div className="donation-impact">
+              <p className="eyebrow">Your support helps fund</p>
+              <ul>
+                <li>
+                  <span aria-hidden="true"><Download size={17} /></span>
+                  <div>
+                    <strong>Free CV downloads</strong>
+                    <small>Keep the core builder useful and accessible.</small>
+                  </div>
+                </li>
+                <li>
+                  <span aria-hidden="true"><LayoutTemplate size={17} /></span>
+                  <div>
+                    <strong>Better templates</strong>
+                    <small>More polished options for different careers.</small>
+                  </div>
+                </li>
+                <li>
+                  <span aria-hidden="true"><Sparkles size={17} /></span>
+                  <div>
+                    <strong>Thoughtful improvements</strong>
+                    <small>More time to refine and maintain Khmer-CV.</small>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <p className="donation-optional">
+              <HeartHandshake size={16} aria-hidden="true" />
+              <span>Completely optional. Any amount is appreciated.</span>
+            </p>
           </div>
 
-          <a
-            className="donation-qr-link"
-            href={activeMethod.image}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Open ${activeMethod.label} QR code full size`}
-          >
-            <img src={activeMethod.image} alt={activeMethod.alt} decoding="async" />
-          </a>
+          <div className="donation-action">
+            <div className="donation-action-heading">
+              <p className="eyebrow">Choose how to support</p>
+              <h3>Scan with your banking app</h3>
+              <p>Pick a payment method, then scan the QR code.</p>
+            </div>
 
-          <a
-            className="donation-fullsize-link"
-            href={activeMethod.image}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <ExternalLink size={15} aria-hidden="true" />
-            <span>Open QR full size</span>
-          </a>
+            <div className="donation-method-tabs" role="tablist" aria-label="Donation payment method">
+              {paymentMethods.map((method) => (
+                <button
+                  className={method.id === activeMethod.id ? 'active' : ''}
+                  type="button"
+                  key={method.id}
+                  onClick={() => setActiveMethodId(method.id)}
+                  role="tab"
+                  aria-selected={method.id === activeMethod.id}
+                  aria-controls="donation-payment-panel"
+                >
+                  <strong>{method.label}</strong>
+                  <span>{method.account}</span>
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="donation-payment-panel"
+              id="donation-payment-panel"
+              role="tabpanel"
+              aria-label={`${activeMethod.label} donation QR`}
+            >
+              <div className="donation-payment-heading">
+                <div>
+                  <p className="eyebrow">Ready to scan</p>
+                  <h3>{activeMethod.label}</h3>
+                </div>
+                <span>{activeMethod.account}</span>
+              </div>
+
+              <a
+                className="donation-qr-link"
+                href={activeMethod.image}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open ${activeMethod.label} QR code full size`}
+              >
+                <img
+                  src={activeMethod.image}
+                  alt={activeMethod.alt}
+                  width={activeMethod.width}
+                  height={activeMethod.height}
+                  decoding="async"
+                />
+              </a>
+
+              <a
+                className="donation-fullsize-link"
+                href={activeMethod.image}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink size={15} aria-hidden="true" />
+                <span>Open QR full size</span>
+              </a>
+            </div>
+
+            <p className="donation-thanks" lang="km">
+              សូមអរគុណពីចិត្ត។
+              <span>Thank you for helping Khmer-CV grow.</span>
+            </p>
+          </div>
         </div>
-
-        <p className="donation-thanks" lang="km">
-          ការគាំទ្ររបស់អ្នកមានតម្លៃខ្លាំងណាស់។ សូមអរគុណពីចិត្ត។
-          <span>Your support means a great deal. Thank you from the heart.</span>
-        </p>
       </section>
     </div>
   );

@@ -1,3 +1,16 @@
+let pdfDependenciesPromise;
+
+export function preloadResumePdf() {
+  if (!pdfDependenciesPromise) {
+    pdfDependenciesPromise = Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+  }
+
+  return pdfDependenciesPromise;
+}
+
 export async function downloadResumePdf(element, fileName) {
   const exportPageWidth = 816;
   const exportPageMinHeight = 1120;
@@ -6,10 +19,7 @@ export async function downloadResumePdf(element, fileName) {
   const jpegQuality = 0.98;
   const exportTarget = `resume-export-${Date.now()}`;
 
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import('html2canvas'),
-    import('jspdf'),
-  ]);
+  const [{ default: html2canvas }, { jsPDF }] = await preloadResumePdf();
 
   await waitForExportAssets(element);
   element.dataset.exportTarget = exportTarget;

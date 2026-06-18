@@ -1,7 +1,12 @@
-import { forwardRef } from 'react';
+import { forwardRef, memo } from 'react';
 import { Globe2, Mail, MapPin, Phone } from 'lucide-react';
 
-const ResumePreview = forwardRef(function ResumePreview({ resume, style, template }, ref) {
+const monthYearFormatter = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  year: 'numeric',
+});
+
+const ResumePreview = memo(forwardRef(function ResumePreview({ resume, style, template }, ref) {
   const { personal } = resume;
   const className = [
     'resume-page',
@@ -115,7 +120,7 @@ const ResumePreview = forwardRef(function ResumePreview({ resume, style, templat
       </div>
     </article>
   );
-});
+}));
 
 function PreviewSection({ title, children, show = true }) {
   if (!show) return null;
@@ -240,10 +245,7 @@ function formatMetaValue(value) {
   if (!monthMatch) return text;
 
   const date = new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1);
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  return monthYearFormatter.format(date);
 }
 
 function initials(name) {

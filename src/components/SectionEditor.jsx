@@ -38,7 +38,11 @@ function SectionEditor({
               <strong>
                 {title} {index + 1}
               </strong>
-              <button type="button" onClick={() => onRemove(section, item.id)} title={`Remove ${title} ${index + 1}`}>
+              <button
+                type="button"
+                onClick={() => onRemove(section, item.id)}
+                aria-label={`Remove ${title} ${index + 1}`}
+              >
                 <Trash2 size={16} aria-hidden="true" />
               </button>
             </div>

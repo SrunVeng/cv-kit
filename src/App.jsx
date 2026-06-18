@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Award,
   BriefcaseBusiness,
@@ -15,18 +24,22 @@ import {
 } from 'lucide-react';
 import { Field, PhoneField, TextareaField } from './components/FormFields.jsx';
 import AppFooter from './components/AppFooter.jsx';
-import DonationDialog from './components/DonationDialog.jsx';
 import ResumePreview from './components/ResumePreview.jsx';
-import SectionEditor from './components/SectionEditor.jsx';
-import StyleControls from './components/StyleControls.jsx';
-import TagEditor from './components/TagEditor.jsx';
 import TemplatePicker from './components/TemplatePicker.jsx';
 import TopBar from './components/TopBar.jsx';
 import { sampleResume } from './data/sampleResume.js';
 import { templates } from './data/templates.js';
 import { generateResumeText, getSmartGeneratorName } from './utils/ai.js';
-import { downloadResumePdf } from './utils/export.js';
+import { clearResumeDraft, loadResumeDraft, saveResumeDraft } from './utils/draft.js';
+import { downloadResumePdf, preloadResumePdf } from './utils/export.js';
+import { prepareProfilePhoto } from './utils/image.js';
 import { createEmptyResume, createEntry } from './utils/resume.js';
+
+const loadDonationDialog = () => import('./components/DonationDialog.jsx');
+const DonationDialog = lazy(loadDonationDialog);
+const SectionEditor = lazy(() => import('./components/SectionEditor.jsx'));
+const StyleControls = lazy(() => import('./components/StyleControls.jsx'));
+const TagEditor = lazy(() => import('./components/TagEditor.jsx'));
 
 const defaultStyle = {
   templateId: 'modern',
@@ -119,16 +132,25 @@ const sectionConfigs = {
 };
 
 function App() {
-  const [resume, setResume] = useState(() => createEmptyResume());
-  const [style, setStyle] = useState(defaultStyle);
-  const [interactedStyleFields, setInteractedStyleFields] = useState({});
-  const [isPreviewComplete, setIsPreviewComplete] = useState(false);
+  const savedDraft = useMemo(() => loadResumeDraft(), []);
+  const [resume, setResume] = useState(() => savedDraft?.resume ?? createEmptyResume());
+  const [style, setStyle] = useState(() => savedDraft?.style ?? defaultStyle);
+  const [interactedStyleFields, setInteractedStyleFields] = useState(
+    () => savedDraft?.interactedStyleFields ?? {},
+  );
+  const [isPreviewComplete, setIsPreviewComplete] = useState(
+    () => savedDraft?.isPreviewComplete ?? false,
+  );
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const [photoState, setPhotoState] = useState({ isProcessing: false, error: '' });
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [aiAssistant, setAiAssistant] = useState(defaultAiAssistant);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => savedDraft?.currentStep ?? 0);
   const previewRef = useRef(null);
+  const photoUploadIdRef = useRef(0);
+  const deferredResume = useDeferredValue(resume);
 
   const activeTemplate = useMemo(
     () => templates.find((template) => template.id === style.templateId) ?? templates[0],
@@ -147,6 +169,7 @@ function App() {
     () => getStartedSteps(resume, interactedStyleFields, isPreviewComplete),
     [resume, interactedStyleFields, isPreviewComplete],
   );
+  const resumeContext = useMemo(() => getResumeContext(resume), [resume]);
   const getStepStatus = (stepId) => {
     if (completedSteps[stepId]) return 'complete';
     if (startedSteps[stepId]) return 'pending';
@@ -154,6 +177,16 @@ function App() {
   };
   const openDonation = useCallback(() => setIsDonationOpen(true), []);
   const closeDonation = useCallback(() => setIsDonationOpen(false), []);
+  const preloadDonation = useCallback(() => {
+    loadDonationDialog().catch(() => {
+      // Opening the dialog will retry if preloading fails.
+    });
+  }, []);
+  const preloadPdfAssets = useCallback(() => {
+    preloadResumePdf().catch(() => {
+      // Export will retry naturally if preloading fails.
+    });
+  }, []);
 
   useEffect(() => {
     if (!isResetConfirmOpen) return undefined;
@@ -167,6 +200,32 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isResetConfirmOpen]);
+
+  useEffect(() => {
+    if (!isPreviewStep) return undefined;
+
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(preloadPdfAssets, { timeout: 2000 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(preloadPdfAssets, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [isPreviewStep, preloadPdfAssets]);
+
+  useEffect(() => {
+    const saveTimeout = window.setTimeout(() => {
+      saveResumeDraft({
+        resume,
+        style,
+        interactedStyleFields,
+        isPreviewComplete,
+        currentStep,
+      });
+    }, 250);
+
+    return () => window.clearTimeout(saveTimeout);
+  }, [currentStep, interactedStyleFields, isPreviewComplete, resume, style]);
 
   const updatePersonal = (field, value) => {
     setResume((current) => ({
@@ -217,31 +276,52 @@ function App() {
     }));
   };
 
-  const handlePhotoUpload = (file) => {
+  const handlePhotoUpload = async (file) => {
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => updatePersonal('photo', reader.result);
-    reader.readAsDataURL(file);
+    const uploadId = ++photoUploadIdRef.current;
+    setPhotoState({ isProcessing: true, error: '' });
+
+    try {
+      const optimizedPhoto = await prepareProfilePhoto(file);
+      if (uploadId !== photoUploadIdRef.current) return;
+
+      updatePersonal('photo', optimizedPhoto);
+      setPhotoState({ isProcessing: false, error: '' });
+    } catch (error) {
+      if (uploadId !== photoUploadIdRef.current) return;
+
+      setPhotoState({
+        isProcessing: false,
+        error: error?.message || 'Unable to prepare this image.',
+      });
+    }
   };
 
   const handleExportPdf = async () => {
     if (!previewRef.current || isExporting) return;
 
     try {
+      setExportError('');
       setIsExporting(true);
       await downloadResumePdf(previewRef.current, resume.personal.fullName || 'resume');
       setIsPreviewComplete(true);
+    } catch {
+      setExportError('PDF creation failed. Please try again or use a smaller profile photo.');
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleReset = () => {
+    photoUploadIdRef.current += 1;
+    clearResumeDraft();
     setResume(createEmptyResume());
     setStyle(defaultStyle);
     setInteractedStyleFields({});
     setIsPreviewComplete(false);
+    setExportError('');
+    setPhotoState({ isProcessing: false, error: '' });
     setCurrentStep(0);
     setIsResetConfirmOpen(false);
   };
@@ -333,9 +413,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <TopBar onDonate={openDonation} />
+      <TopBar onDonate={openDonation} onDonateIntent={preloadDonation} />
 
-      <DonationDialog isOpen={isDonationOpen} onClose={closeDonation} />
+      {isDonationOpen ? (
+        <Suspense fallback={<DialogLoading />}>
+          <DonationDialog isOpen onClose={closeDonation} />
+        </Suspense>
+      ) : null}
 
       {isResetConfirmOpen && (
         <div className="confirm-backdrop" role="presentation" onClick={() => setIsResetConfirmOpen(false)}>
@@ -437,21 +521,26 @@ function App() {
 
           <div className={`wizard-step-content ${showSidePreview ? 'with-preview' : ''}`}>
             <div className="wizard-editor-column">
-              {renderStepContent({
-                activeTemplate,
-                currentStepId: currentStepData.id,
-                handlePhotoUpload,
-                previewRef,
-                resume,
-                style,
-                updateItem,
-                updatePersonal,
-                updateStyle,
-                updateTags,
-                addItem,
-                removeItem,
-                openAiAssistant,
-              })}
+              <Suspense fallback={<StepLoading />}>
+                {renderStepContent({
+                  activeTemplate,
+                  currentStepId: currentStepData.id,
+                  handlePhotoUpload,
+                  photoState,
+                  previewRef,
+                  previewResume: deferredResume,
+                  resume,
+                  resumeContext,
+                  style,
+                  updateItem,
+                  updatePersonal,
+                  updateStyle,
+                  updateTags,
+                  addItem,
+                  removeItem,
+                  openAiAssistant,
+                })}
+              </Suspense>
             </div>
 
             {showSidePreview ? (
@@ -464,11 +553,15 @@ function App() {
                   <span className="template-pill">{activeTemplate.tone}</span>
                 </div>
                 <div className="preview-stage rail-preview-stage">
-                  <ResumePreview resume={resume} style={style} template={activeTemplate} />
+                  <ResumePreview resume={deferredResume} style={style} template={activeTemplate} />
                 </div>
               </aside>
             ) : null}
           </div>
+
+          {isPreviewStep && exportError ? (
+            <p className="export-error" role="alert">{exportError}</p>
+          ) : null}
 
           <nav className="wizard-footer" aria-label="Step navigation">
             <button className="wizard-nav-button" type="button" onClick={goBack} disabled={currentStep === 0}>
@@ -480,6 +573,8 @@ function App() {
                 className="wizard-nav-button primary"
                 type="button"
                 onClick={handleExportPdf}
+                onPointerEnter={preloadPdfAssets}
+                onFocus={preloadPdfAssets}
                 disabled={isExporting}
               >
                 <Download size={18} aria-hidden="true" />
@@ -500,12 +595,35 @@ function App() {
   );
 }
 
+function StepLoading() {
+  return (
+    <div className="step-loading" role="status" aria-live="polite">
+      <span aria-hidden="true" />
+      <p>Loading this step…</p>
+    </div>
+  );
+}
+
+function DialogLoading() {
+  return (
+    <div className="dialog-loading-backdrop" role="status" aria-live="polite">
+      <div className="dialog-loading">
+        <span aria-hidden="true" />
+        <p>Opening support options…</p>
+      </div>
+    </div>
+  );
+}
+
 function renderStepContent({
   activeTemplate,
   currentStepId,
   handlePhotoUpload,
+  photoState,
   previewRef,
+  previewResume,
   resume,
+  resumeContext,
   style,
   updateItem,
   updatePersonal,
@@ -515,8 +633,6 @@ function renderStepContent({
   removeItem,
   openAiAssistant,
 }) {
-  const resumeContext = getResumeContext(resume);
-
   switch (currentStepId) {
     case 'template':
       return (
@@ -541,6 +657,7 @@ function renderStepContent({
             personal={resume.personal}
             onPhotoUpload={handlePhotoUpload}
             onRemovePhoto={() => updatePersonal('photo', '')}
+            photoState={photoState}
           />
           <div className="field-grid">
             <Field
@@ -713,7 +830,12 @@ function renderStepContent({
             <span className="template-pill">{activeTemplate.tone}</span>
           </div>
           <div className="preview-stage wizard-preview-stage">
-            <ResumePreview ref={previewRef} resume={resume} style={style} template={activeTemplate} />
+            <ResumePreview
+              ref={previewRef}
+              resume={previewResume}
+              style={style}
+              template={activeTemplate}
+            />
           </div>
         </section>
       );
@@ -851,10 +973,10 @@ function AiAssistantDialog({ assistant, onChange, onClose, onGenerate, onApply }
   );
 }
 
-function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto }) {
+function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto, photoState }) {
   return (
     <div className="photo-uploader">
-      <label className="photo-uploader-target">
+      <label className={`photo-uploader-target ${photoState.isProcessing ? 'processing' : ''}`}>
         <span className="photo-frame">
           {personal.photo ? (
             <img src={personal.photo} alt="" />
@@ -865,21 +987,36 @@ function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto }) {
           )}
         </span>
         <span>
-          <strong>{personal.photo ? 'Change photo' : 'Upload photo'}</strong>
-          <small>JPG or PNG, square image works best.</small>
+          <strong>
+            {photoState.isProcessing
+              ? 'Optimizing photo…'
+              : personal.photo
+                ? 'Change photo'
+                : 'Upload photo'}
+          </strong>
+          <small>JPG, PNG, or WebP. Large images are optimized automatically.</small>
         </span>
         <ImagePlus size={20} aria-hidden="true" />
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={photoState.isProcessing}
           onChange={(event) => {
             onPhotoUpload(event.target.files?.[0]);
             event.target.value = '';
           }}
         />
       </label>
+      {photoState.error ? (
+        <p className="photo-error" role="alert">{photoState.error}</p>
+      ) : null}
       {personal.photo ? (
-        <button className="photo-remove-button" type="button" onClick={onRemovePhoto}>
+        <button
+          className="photo-remove-button"
+          type="button"
+          onClick={onRemovePhoto}
+          disabled={photoState.isProcessing}
+        >
           <Trash2 size={16} aria-hidden="true" />
           <span>Remove</span>
         </button>

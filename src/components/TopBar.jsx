@@ -1,7 +1,7 @@
 import { HeartHandshake } from 'lucide-react';
-import logo from '../assets/khmer-cv-logo.png';
+import logo from '../assets/khmer-cv-logo-small.png';
 
-function TopBar({ onDonate }) {
+function TopBar({ onDonate, onDonateIntent }) {
   return (
     <header className="top-bar">
       <div className="brand-lockup">
@@ -14,9 +14,20 @@ function TopBar({ onDonate }) {
         </div>
       </div>
 
-      <button className="donation-trigger" type="button" onClick={onDonate}>
-        <HeartHandshake size={18} aria-hidden="true" />
-        <span>Donate</span>
+      <button
+        className="donation-trigger"
+        type="button"
+        onClick={onDonate}
+        onPointerEnter={onDonateIntent}
+        onFocus={onDonateIntent}
+      >
+        <span className="donation-trigger-icon" aria-hidden="true">
+          <HeartHandshake size={20} />
+        </span>
+        <span className="donation-trigger-copy">
+          <strong>Support Khmer-CV</strong>
+          <small>Keep the builder free</small>
+        </span>
       </button>
     </header>
   );

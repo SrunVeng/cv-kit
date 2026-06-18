@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Eye, LayoutTemplate, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import ResumePreview from './ResumePreview.jsx';
 
 function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }) {
@@ -13,7 +13,18 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
     return Object.entries(grouped).map(([name, count]) => ({ name, count }));
   }, [templates]);
 
-  const activeTemplate = templates.find((template) => template.id === activeTemplateId) ?? templates[0];
+  const activeTemplate = useMemo(
+    () => templates.find((template) => template.id === activeTemplateId) ?? templates[0],
+    [activeTemplateId, templates],
+  );
+  const previewStyle = useMemo(
+    () => ({
+      accentColor: style.accentColor,
+      fontPairing: style.fontPairing,
+      density: style.density,
+    }),
+    [style.accentColor, style.density, style.fontPairing],
+  );
   const [activeCategory, setActiveCategory] = useState(activeTemplate.category || categories[0]?.name);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
@@ -106,7 +117,10 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
     onChange('templateId', template.id);
   };
 
-  const visibleTemplates = templates.filter((template) => template.category === activeCategory);
+  const visibleTemplates = useMemo(
+    () => templates.filter((template) => template.category === activeCategory),
+    [activeCategory, templates],
+  );
 
   return (
     <section className="editor-section template-picker-section" aria-labelledby="templates-heading">
@@ -203,11 +217,7 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
             aria-pressed={template.id === activeTemplateId}
             title="Hold to preview"
           >
-            <span className="template-preview-frame" aria-hidden="true">
-              <span className="template-preview-scale">
-                <ResumePreview resume={resume} style={{ ...style, templateId: template.id }} template={template} />
-              </span>
-            </span>
+            <TemplateThumbnail resume={resume} style={previewStyle} template={template} />
             <span className="template-card-copy">
               <span>
                 <strong>{template.name}</strong>
@@ -254,7 +264,7 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
             <div className="template-large-preview-stage">
               <ResumePreview
                 resume={resume}
-                style={{ ...style, templateId: previewTemplate.id }}
+                style={previewStyle}
                 template={previewTemplate}
               />
             </div>
@@ -275,5 +285,46 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
     </section>
   );
 }
+
+const TemplateThumbnail = memo(function TemplateThumbnail({ resume, style, template }) {
+  const frameRef = useRef(null);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return undefined;
+
+    if (!('IntersectionObserver' in window)) {
+      setShouldRender(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldRender(true);
+        observer.disconnect();
+      },
+      { rootMargin: '0px 0px -48px' },
+    );
+
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <span className="template-preview-frame" ref={frameRef} aria-hidden="true">
+      {shouldRender ? (
+        <span className="template-preview-scale">
+          <ResumePreview resume={resume} style={style} template={template} />
+        </span>
+      ) : (
+        <span className="template-preview-placeholder">
+          <LayoutTemplate size={24} />
+        </span>
+      )}
+    </span>
+  );
+});
 
 export default TemplatePicker;

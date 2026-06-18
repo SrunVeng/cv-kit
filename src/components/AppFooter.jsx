@@ -1,4 +1,4 @@
-import logo from '../assets/khmer-cv-logo.png';
+import logo from '../assets/khmer-cv-logo-small.png';
 
 function AppFooter() {
   const year = new Date().getFullYear();

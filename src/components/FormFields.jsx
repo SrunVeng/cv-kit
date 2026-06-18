@@ -111,6 +111,7 @@ export function PhoneField({ label, value, countryCode, placeholder = 'Phone num
           type="tel"
           value={parsedPhone.localNumber}
           placeholder={placeholder}
+          aria-label={label}
           onChange={(event) => updateNumber(event.target.value)}
         />
       </div>
@@ -142,6 +143,7 @@ export function MonthField({ label, value, onChange, allowPresent = false }) {
           <button
             className={selectedMonth || isPresent ? 'month-trigger has-value' : 'month-trigger'}
             type="button"
+            aria-label={`${label}: ${displayValue}`}
             onClick={() => {
               if (selectedMonth) {
                 setViewYear(selectedMonth.year);

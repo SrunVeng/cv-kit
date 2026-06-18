@@ -55,6 +55,7 @@ function TagEditor({ title, eyebrow, tags, onChange, placeholder }) {
           type="text"
           value={draft}
           placeholder={placeholder || `Add ${title.toLowerCase()}`}
+          aria-label={`Add ${title.toLowerCase()}`}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
