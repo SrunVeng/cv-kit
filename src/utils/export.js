@@ -2,8 +2,8 @@ export async function downloadResumePdf(element, fileName) {
   const exportPageWidth = 816;
   const exportPageMinHeight = 1120;
   const exportViewportWidth = 1440;
-  const exportCanvasScale = 1.5;
-  const jpegQuality = 0.84;
+  const exportCanvasScale = 3;
+  const jpegQuality = 0.98;
   const exportTarget = `resume-export-${Date.now()}`;
 
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
@@ -11,6 +11,7 @@ export async function downloadResumePdf(element, fileName) {
     import('jspdf'),
   ]);
 
+  await waitForExportAssets(element);
   element.dataset.exportTarget = exportTarget;
 
   let canvas;
@@ -19,6 +20,8 @@ export async function downloadResumePdf(element, fileName) {
       backgroundColor: '#ffffff',
       scale: exportCanvasScale,
       useCORS: true,
+      logging: false,
+      imageTimeout: 15000,
       windowWidth: exportViewportWidth,
       windowHeight: Math.max(element.scrollHeight, exportPageMinHeight),
       onclone: (clonedDocument) => {
@@ -54,9 +57,36 @@ export async function downloadResumePdf(element, fileName) {
   const imageY = (pageHeight - imageHeight) / 2;
   const imageData = canvas.toDataURL('image/jpeg', jpegQuality);
 
-  pdf.addImage(imageData, 'JPEG', imageX, imageY, imageWidth, imageHeight, undefined, 'FAST');
+  pdf.addImage(imageData, 'JPEG', imageX, imageY, imageWidth, imageHeight, undefined, 'SLOW');
 
   await savePdfBlob(pdf.output('blob'), `${slugify(fileName)}.pdf`);
+}
+
+async function waitForExportAssets(element) {
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
+  const images = Array.from(element.querySelectorAll('img'));
+  await Promise.all(
+    images.map(async (image) => {
+      if (image.complete) return;
+
+      if (typeof image.decode === 'function') {
+        try {
+          await image.decode();
+          return;
+        } catch {
+          // Fall through to load/error listeners for browsers with partial decode support.
+        }
+      }
+
+      await new Promise((resolve) => {
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', resolve, { once: true });
+      });
+    }),
+  );
 }
 
 function slugify(value) {

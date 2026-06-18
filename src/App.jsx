@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Award,
   BriefcaseBusiness,
@@ -14,6 +14,8 @@ import {
   UserRound,
 } from 'lucide-react';
 import { Field, PhoneField, TextareaField } from './components/FormFields.jsx';
+import AppFooter from './components/AppFooter.jsx';
+import DonationDialog from './components/DonationDialog.jsx';
 import ResumePreview from './components/ResumePreview.jsx';
 import SectionEditor from './components/SectionEditor.jsx';
 import StyleControls from './components/StyleControls.jsx';
@@ -119,8 +121,11 @@ const sectionConfigs = {
 function App() {
   const [resume, setResume] = useState(() => createEmptyResume());
   const [style, setStyle] = useState(defaultStyle);
+  const [interactedStyleFields, setInteractedStyleFields] = useState({});
+  const [isPreviewComplete, setIsPreviewComplete] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [aiAssistant, setAiAssistant] = useState(defaultAiAssistant);
   const [currentStep, setCurrentStep] = useState(0);
   const previewRef = useRef(null);
@@ -134,7 +139,21 @@ function App() {
   const isPreviewStep = currentStepData.id === 'preview';
   const showSidePreview = !['template', 'preview'].includes(currentStepData.id);
   const progressPercent = ((currentStep + 1) / wizardSteps.length) * 100;
-  const filledSteps = useMemo(() => getFilledSteps(resume, style), [resume, style]);
+  const completedSteps = useMemo(
+    () => getCompletedSteps(resume, style, interactedStyleFields, isPreviewComplete),
+    [resume, style, interactedStyleFields, isPreviewComplete],
+  );
+  const startedSteps = useMemo(
+    () => getStartedSteps(resume, interactedStyleFields, isPreviewComplete),
+    [resume, interactedStyleFields, isPreviewComplete],
+  );
+  const getStepStatus = (stepId) => {
+    if (completedSteps[stepId]) return 'complete';
+    if (startedSteps[stepId]) return 'pending';
+    return 'not started';
+  };
+  const openDonation = useCallback(() => setIsDonationOpen(true), []);
+  const closeDonation = useCallback(() => setIsDonationOpen(false), []);
 
   useEffect(() => {
     if (!isResetConfirmOpen) return undefined;
@@ -160,6 +179,10 @@ function App() {
   };
 
   const updateStyle = (field, value) => {
+    setInteractedStyleFields((current) => (
+      current[field] ? current : { ...current, [field]: true }
+    ));
+
     setStyle((current) => ({
       ...current,
       [field]: value,
@@ -208,6 +231,7 @@ function App() {
     try {
       setIsExporting(true);
       await downloadResumePdf(previewRef.current, resume.personal.fullName || 'resume');
+      setIsPreviewComplete(true);
     } finally {
       setIsExporting(false);
     }
@@ -216,6 +240,8 @@ function App() {
   const handleReset = () => {
     setResume(createEmptyResume());
     setStyle(defaultStyle);
+    setInteractedStyleFields({});
+    setIsPreviewComplete(false);
     setCurrentStep(0);
     setIsResetConfirmOpen(false);
   };
@@ -289,12 +315,14 @@ function App() {
   };
 
   const goBack = () => {
-    setCurrentStep((step) => Math.max(0, step - 1));
+    const nextStep = Math.max(0, currentStep - 1);
+    setCurrentStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const goNext = () => {
-    setCurrentStep((step) => Math.min(wizardSteps.length - 1, step + 1));
+    const nextStep = Math.min(wizardSteps.length - 1, currentStep + 1);
+    setCurrentStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -303,19 +331,11 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const topActions = [
-    {
-      label: 'Start Over',
-      shortLabel: 'Start Over',
-      icon: RefreshCcw,
-      onClick: () => setIsResetConfirmOpen(true),
-      variant: 'danger',
-    },
-  ];
-
   return (
     <div className="app-shell">
-      <TopBar actions={topActions} />
+      <TopBar onDonate={openDonation} />
+
+      <DonationDialog isOpen={isDonationOpen} onClose={closeDonation} />
 
       {isResetConfirmOpen && (
         <div className="confirm-backdrop" role="presentation" onClick={() => setIsResetConfirmOpen(false)}>
@@ -382,8 +402,8 @@ function App() {
                 className={[
                   'wizard-step-button',
                   index === currentStep ? 'active' : '',
-                  index < currentStep ? 'complete' : '',
-                  filledSteps[step.id] ? 'filled' : '',
+                  completedSteps[step.id] ? 'complete' : '',
+                  startedSteps[step.id] && !completedSteps[step.id] ? 'pending' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -391,12 +411,22 @@ function App() {
                 key={step.id}
                 onClick={() => jumpToStep(index)}
                 aria-current={index === currentStep ? 'step' : undefined}
+                aria-label={`${step.label}: ${getStepStatus(step.id)}`}
               >
                 <span>{index + 1}</span>
                 <strong>{step.label}</strong>
               </button>
             ))}
           </div>
+
+          <button
+            className="wizard-reset-button"
+            type="button"
+            onClick={() => setIsResetConfirmOpen(true)}
+          >
+            <RefreshCcw size={15} aria-hidden="true" />
+            <span>Start over</span>
+          </button>
         </aside>
 
         <section className="wizard-main" aria-labelledby="wizard-heading">
@@ -464,6 +494,8 @@ function App() {
           </nav>
         </section>
       </main>
+
+      <AppFooter />
     </div>
   );
 }
@@ -856,25 +888,95 @@ function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto }) {
   );
 }
 
-function getFilledSteps(resume, style) {
+function getCompletedSteps(resume, style, interactedStyleFields, isPreviewComplete) {
+  const startedProjects = getStartedItems(resume.projects, ['name', 'role', 'start', 'end', 'summary', 'highlights']);
+  const startedCertifications = getStartedItems(resume.certifications, ['title', 'issuer', 'year']);
+  const hasStartedExtra = startedProjects.length > 0 || startedCertifications.length > 0;
+
   return {
-    template: hasText(style.templateId),
-    identity: [resume.personal.fullName, resume.personal.headline, resume.personal.photo].some(hasText),
-    contact: [resume.personal.email, resume.personal.phone, resume.personal.location, resume.personal.website].some(hasText),
+    template: Boolean(interactedStyleFields.templateId) && hasText(style.templateId),
+    identity: hasAllText([resume.personal.fullName, resume.personal.headline]),
+    contact: hasAllText([resume.personal.email, resume.personal.phone, resume.personal.location]),
     summary: hasText(resume.personal.summary),
-    skills: hasListValue(resume.skills) || hasListValue(resume.languages),
-    experience: hasSectionValue(resume.experience, ['role', 'company', 'location', 'start', 'end', 'summary', 'highlights']),
-    education: hasSectionValue(resume.education, ['degree', 'school', 'location', 'start', 'end', 'summary']),
+    skills: hasListValue(resume.skills) && hasListValue(resume.languages),
+    experience: isSectionComplete(
+      resume.experience,
+      ['role', 'company', 'location', 'start', 'end', 'summary', 'highlights'],
+      ['role', 'company', 'start', 'end', 'summary'],
+    ),
+    education: isSectionComplete(
+      resume.education,
+      ['degree', 'school', 'location', 'start', 'end', 'summary'],
+      ['degree', 'school', 'start', 'end'],
+    ),
     extras:
-      hasSectionValue(resume.projects, ['name', 'role', 'start', 'end', 'summary', 'highlights']) ||
-      hasSectionValue(resume.certifications, ['title', 'issuer', 'year']),
-    style: [style.accentColor, style.fontPairing, style.density].some(hasText),
-    preview: false,
+      hasStartedExtra &&
+      startedProjects.every((item) => hasAllItemValues(item, ['name', 'role', 'summary'])) &&
+      startedCertifications.every((item) => hasAllItemValues(item, ['title', 'issuer', 'year'])),
+    style:
+      ['accentColor', 'fontPairing', 'density'].every((field) => interactedStyleFields[field]) &&
+      hasAllText([style.accentColor, style.fontPairing, style.density]),
+    preview: isPreviewComplete,
   };
 }
 
-function hasSectionValue(items, keys) {
-  return Array.isArray(items) && items.some((item) => keys.some((key) => hasListValue(item[key]) || hasText(item[key])));
+function getStartedSteps(resume, interactedStyleFields, isPreviewComplete) {
+  return {
+    template: Boolean(interactedStyleFields.templateId),
+    identity: hasAllOrSomeText([
+      resume.personal.fullName,
+      resume.personal.headline,
+      resume.personal.photo,
+    ]),
+    contact: hasAllOrSomeText([
+      resume.personal.email,
+      resume.personal.phone,
+      resume.personal.location,
+      resume.personal.website,
+    ]),
+    summary: hasText(resume.personal.summary),
+    skills: hasListValue(resume.skills) || hasListValue(resume.languages),
+    experience:
+      getStartedItems(
+        resume.experience,
+        ['role', 'company', 'location', 'start', 'end', 'summary', 'highlights'],
+      ).length > 0,
+    education:
+      getStartedItems(
+        resume.education,
+        ['degree', 'school', 'location', 'start', 'end', 'summary'],
+      ).length > 0,
+    extras:
+      getStartedItems(
+        resume.projects,
+        ['name', 'role', 'start', 'end', 'summary', 'highlights'],
+      ).length > 0 ||
+      getStartedItems(resume.certifications, ['title', 'issuer', 'year']).length > 0,
+    style: ['accentColor', 'fontPairing', 'density'].some((field) => interactedStyleFields[field]),
+    preview: isPreviewComplete,
+  };
+}
+
+function isSectionComplete(items, allKeys, requiredKeys) {
+  const startedItems = getStartedItems(items, allKeys);
+  return startedItems.length > 0 && startedItems.every((item) => hasAllItemValues(item, requiredKeys));
+}
+
+function getStartedItems(items, keys) {
+  if (!Array.isArray(items)) return [];
+  return items.filter((item) => keys.some((key) => hasListValue(item[key]) || hasText(item[key])));
+}
+
+function hasAllItemValues(item, keys) {
+  return keys.every((key) => hasListValue(item[key]) || hasText(item[key]));
+}
+
+function hasAllText(values) {
+  return values.every(hasText);
+}
+
+function hasAllOrSomeText(values) {
+  return values.some(hasText);
 }
 
 function hasListValue(value) {

@@ -1,11 +1,12 @@
-import { FileText } from 'lucide-react';
+import { HeartHandshake } from 'lucide-react';
+import logo from '../assets/khmer-cv-logo.png';
 
-function TopBar({ actions }) {
+function TopBar({ onDonate }) {
   return (
     <header className="top-bar">
       <div className="brand-lockup">
         <span className="brand-mark" aria-hidden="true">
-          <FileText size={22} />
+          <img src={logo} alt="" width="44" height="44" />
         </span>
         <div>
           <p className="eyebrow">Khmer-CV</p>
@@ -13,26 +14,10 @@ function TopBar({ actions }) {
         </div>
       </div>
 
-      <div className="top-actions" aria-label="Document actions">
-        {actions.map((action) => {
-          const Icon = action.icon;
-          const className = ['action-button', action.variant].filter(Boolean).join(' ');
-
-          return (
-            <button
-              className={className}
-              type="button"
-              key={action.label}
-              onClick={action.onClick}
-              disabled={action.disabled}
-              title={action.label}
-            >
-              <Icon size={18} aria-hidden="true" />
-              <span data-short-label={action.shortLabel || action.label}>{action.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <button className="donation-trigger" type="button" onClick={onDonate}>
+        <HeartHandshake size={18} aria-hidden="true" />
+        <span>Donate</span>
+      </button>
     </header>
   );
 }
