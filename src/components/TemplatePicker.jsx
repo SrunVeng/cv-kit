@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Eye, LayoutTemplate, X } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ResumePreview from './ResumePreview.jsx';
 
 function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }) {
@@ -65,14 +66,19 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
   useEffect(() => {
     if (!previewTemplate) return undefined;
 
+    const previousBodyOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') {
         closeTemplatePreview();
       }
     };
 
+    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
   }, [previewTemplate]);
 
   useEffect(
@@ -233,55 +239,68 @@ function TemplatePicker({ templates, activeTemplateId, onChange, resume, style }
         ))}
       </div>
 
-      {previewTemplate ? (
-        <div
-          className="template-preview-backdrop"
-          role="presentation"
-          onClick={closeTemplatePreview}
-        >
-          <section
-            className="template-preview-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="template-preview-title"
-            onClick={(event) => event.stopPropagation()}
+      {previewTemplate && typeof document !== 'undefined'
+        ? createPortal(
+          <div
+            className="template-preview-backdrop"
+            role="presentation"
+            onClick={closeTemplatePreview}
           >
-            <header className="template-preview-dialog-header">
-              <div>
-                <p className="eyebrow">Template preview</p>
-                <h2 id="template-preview-title">{previewTemplate.name}</h2>
-              </div>
-              <button
-                type="button"
-                onClick={closeTemplatePreview}
-                aria-label="Close template preview"
-                autoFocus
-              >
-                <X size={19} aria-hidden="true" />
-              </button>
-            </header>
-
-            <div className="template-large-preview-stage resume-export-scope print-preview-scope">
-              <ResumePreview
-                resume={resume}
-                style={previewStyle}
-                template={previewTemplate}
-              />
-            </div>
-
-            <button
-              className="template-preview-use-button"
-              type="button"
-              onClick={() => {
-                onChange('templateId', previewTemplate.id);
-                closeTemplatePreview();
-              }}
+            <section
+              className="template-preview-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="template-preview-title"
+              onClick={(event) => event.stopPropagation()}
             >
-              Use this template
-            </button>
-          </section>
-        </div>
-      ) : null}
+              <header className="template-preview-dialog-header">
+                <div>
+                  <p className="eyebrow">Print preview</p>
+                  <h2 id="template-preview-title">{previewTemplate.name}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeTemplatePreview}
+                  aria-label="Close template preview"
+                  autoFocus
+                >
+                  <X size={19} aria-hidden="true" />
+                  <span>Close</span>
+                </button>
+              </header>
+
+              <div className="template-large-preview-stage resume-export-scope print-preview-scope">
+                <ResumePreview
+                  resume={resume}
+                  style={previewStyle}
+                  template={previewTemplate}
+                />
+              </div>
+
+              <footer className="template-preview-actions">
+                <button
+                  className="template-preview-exit-button"
+                  type="button"
+                  onClick={closeTemplatePreview}
+                >
+                  Exit preview
+                </button>
+                <button
+                  className="template-preview-use-button"
+                  type="button"
+                  onClick={() => {
+                    onChange('templateId', previewTemplate.id);
+                    closeTemplatePreview();
+                  }}
+                >
+                  Use this template
+                </button>
+              </footer>
+            </section>
+          </div>,
+          document.body,
+        )
+        : null}
     </section>
   );
 }

@@ -1,10 +1,19 @@
 :root {
+  --app-ink: #17243f;
+  --app-muted: #667085;
+  --app-accent: #1264b9;
+  --app-accent-strong: #0f4f96;
+  --app-coral: #d6a640;
+  --app-canvas: #f4f7f8;
+  --app-surface: #ffffff;
+  --app-line: #dce4e8;
+  --app-soft: #edf5f4;
   color-scheme: light;
   font-family:
     Inter, "Noto Sans Khmer", "Khmer OS System", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172033;
-  background: #f5f7fb;
+  color: var(--app-ink);
+  background: var(--app-canvas);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -45,9 +54,9 @@ input[type="file"] {
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
-    linear-gradient(315deg, rgba(190, 18, 60, 0.06), transparent 32%),
-    #f5f7fb;
+    radial-gradient(circle at 8% 3%, rgba(18, 100, 185, 0.1), transparent 26rem),
+    radial-gradient(circle at 94% 12%, rgba(214, 166, 64, 0.09), transparent 24rem),
+    var(--app-canvas);
 }
 
 .top-bar {
@@ -58,11 +67,12 @@ input[type="file"] {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 76px;
-  padding: 14px 24px;
-  border-bottom: 1px solid rgba(23, 32, 51, 0.1);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
+  min-height: 72px;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(220, 228, 232, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 30px rgba(23, 36, 63, 0.05);
+  backdrop-filter: blur(20px);
 }
 
 .brand-lockup {
@@ -77,12 +87,14 @@ input[type="file"] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
+  border: 1px solid rgba(18, 100, 185, 0.14);
+  border-radius: 14px;
   overflow: hidden;
-  background: #fffaf5;
-  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.2);
+  background: #f7faff;
+  box-shadow: 0 10px 26px rgba(23, 36, 63, 0.09);
 }
 
 .brand-mark img {
@@ -99,7 +111,10 @@ input[type="file"] {
 }
 
 .brand-lockup h1 {
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  color: var(--app-ink);
+  font-size: clamp(1.12rem, 2vw, 1.38rem);
+  font-weight: 780;
+  letter-spacing: -0.025em;
   line-height: 1.1;
 }
 
@@ -109,16 +124,14 @@ input[type="file"] {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 50px;
-  padding: 6px 17px 6px 7px;
+  min-height: 46px;
+  padding: 5px 15px 5px 5px;
   overflow: hidden;
-  border: 1px solid #be123c;
-  border-radius: 14px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #be123c, #9f1239);
-  box-shadow:
-    0 12px 28px rgba(159, 18, 57, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(242, 107, 94, 0.28);
+  border-radius: 13px;
+  color: var(--app-ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(23, 36, 63, 0.07);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -141,11 +154,11 @@ input[type="file"] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
-  color: #be123c;
-  background: #ffffff;
+  color: #d94f45;
+  background: #fff0ed;
 }
 
 .donation-trigger-copy {
@@ -157,23 +170,22 @@ input[type="file"] {
 }
 
 .donation-trigger-copy strong {
-  font-size: 0.82rem;
-  font-weight: 950;
+  color: var(--app-ink);
+  font-size: 0.8rem;
+  font-weight: 850;
   line-height: 1.1;
 }
 
 .donation-trigger-copy small {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--app-muted);
   font-size: 0.68rem;
   font-weight: 750;
   line-height: 1.15;
 }
 
 .donation-trigger:hover {
-  border-color: #9f1239;
-  box-shadow:
-    0 16px 34px rgba(159, 18, 57, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  border-color: rgba(242, 107, 94, 0.58);
+  box-shadow: 0 12px 28px rgba(23, 36, 63, 0.11);
   transform: translateY(-2px);
 }
 
@@ -188,10 +200,10 @@ input[type="file"] {
 
 .eyebrow {
   margin: 0 0 4px;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
@@ -2149,7 +2161,7 @@ input[type="file"] {
 .template-preview-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 200;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -2188,13 +2200,16 @@ input[type="file"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  min-height: 38px;
+  padding: 0 11px;
   border: 1px solid rgba(23, 32, 51, 0.12);
   border-radius: 11px;
   color: #475569;
   background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .template-large-preview-stage {
@@ -2217,14 +2232,30 @@ input[type="file"] {
   zoom: 0.72;
 }
 
+.template-preview-actions {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.42fr) minmax(180px, 1fr);
+  gap: 10px;
+}
+
+.template-preview-exit-button,
 .template-preview-use-button {
   min-height: 46px;
-  border: 0;
   border-radius: 12px;
-  color: #ffffff;
-  background: #0f766e;
   font-size: 0.9rem;
   font-weight: 900;
+}
+
+.template-preview-exit-button {
+  border: 1px solid rgba(23, 32, 51, 0.14);
+  color: #334155;
+  background: #f8fafc;
+}
+
+.template-preview-use-button {
+  border: 0;
+  color: #ffffff;
+  background: #0f766e;
 }
 
 .control-group {
@@ -3946,6 +3977,197 @@ input[type="file"] {
   height: 1px;
 }
 
+/* Minimal modern application theme. Resume templates keep their own print styling. */
+.wizard-progress,
+.editor-section,
+.style-responsive-preview {
+  border-color: var(--app-line);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 34px rgba(23, 36, 63, 0.06);
+}
+
+.wizard-progress,
+.editor-section {
+  border-radius: 18px;
+}
+
+.wizard-progress h2,
+.wizard-heading h1,
+.section-title-row h2,
+.preview-toolbar h2 {
+  color: var(--app-ink);
+  letter-spacing: -0.025em;
+}
+
+.wizard-progress-bar {
+  background: #e7edef;
+}
+
+.wizard-progress-bar span {
+  background: linear-gradient(90deg, var(--app-accent), #2d7ed1);
+}
+
+.wizard-step-button {
+  border-color: transparent;
+  border-radius: 13px;
+  color: var(--app-muted);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.wizard-step-button:hover {
+  border-color: rgba(18, 100, 185, 0.2);
+  background: #ffffff;
+}
+
+.wizard-step-button span {
+  color: #64748b;
+  background: #edf1f3;
+}
+
+.wizard-step-button.active {
+  color: var(--app-ink);
+  border-color: rgba(18, 100, 185, 0.42);
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(18, 100, 185, 0.1);
+}
+
+.wizard-step-button.complete {
+  color: var(--app-accent-strong);
+}
+
+.wizard-step-button.complete span {
+  background: var(--app-accent);
+}
+
+.wizard-step-button.pending span {
+  color: #0f4f96;
+  background: #dbeafe;
+}
+
+.wizard-reset-button {
+  border-color: rgba(242, 107, 94, 0.25);
+  color: #b6473e;
+  background: rgba(255, 240, 237, 0.8);
+}
+
+.wizard-reset-button:hover {
+  color: #96382f;
+  border-color: rgba(242, 107, 94, 0.48);
+  background: #fff0ed;
+  box-shadow: 0 8px 18px rgba(242, 107, 94, 0.1);
+}
+
+.wizard-footer {
+  background: linear-gradient(180deg, rgba(244, 247, 248, 0), var(--app-canvas) 38%);
+}
+
+.wizard-nav-button {
+  border-color: var(--app-line);
+  border-radius: 12px;
+  color: var(--app-ink);
+  box-shadow: 0 6px 18px rgba(23, 36, 63, 0.04);
+}
+
+.wizard-nav-button.primary {
+  border-color: var(--app-ink);
+  background: var(--app-ink);
+  box-shadow: 0 10px 24px rgba(23, 36, 63, 0.16);
+}
+
+.template-option {
+  border-color: var(--app-line);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(23, 36, 63, 0.04);
+}
+
+.template-option.active {
+  border-color: var(--app-accent);
+  box-shadow:
+    inset 0 0 0 1px rgba(18, 100, 185, 0.18),
+    0 10px 28px rgba(18, 100, 185, 0.08);
+}
+
+.template-category-tabs button,
+.template-category-trigger,
+.template-pill {
+  border-color: var(--app-line);
+  color: var(--app-muted);
+  background: #ffffff;
+}
+
+.template-category-tabs button.active {
+  color: var(--app-accent-strong);
+  border-color: rgba(18, 100, 185, 0.34);
+  background: var(--app-soft);
+}
+
+.preview-stage,
+.template-preview-frame,
+.template-large-preview-stage {
+  border-color: var(--app-line);
+  background-color: #e9eff1;
+}
+
+.field input,
+.field select,
+.field textarea,
+.inline-add input,
+.country-trigger,
+.month-trigger,
+.current-toggle {
+  border-color: var(--app-line);
+  border-radius: 11px;
+  color: var(--app-ink);
+  background: #ffffff;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.inline-add input:focus,
+.country-trigger[aria-expanded="true"],
+.month-trigger[aria-expanded="true"] {
+  border-color: rgba(18, 100, 185, 0.62);
+  box-shadow: 0 0 0 3px rgba(18, 100, 185, 0.11);
+}
+
+.segmented-control {
+  border-color: var(--app-line);
+  background: #eef2f4;
+}
+
+.segmented-control button.active {
+  color: var(--app-ink);
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(23, 36, 63, 0.08);
+}
+
+.color-swatch.active {
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 0 0 5px var(--app-accent);
+}
+
+.app-footer {
+  border-top-color: var(--app-line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.footer-brand img {
+  padding: 3px;
+  border: 1px solid rgba(18, 100, 185, 0.12);
+  background: #f7faff;
+}
+
+.footer-brand strong {
+  color: var(--app-ink);
+}
+
+.footer-brand span,
+.footer-copy p {
+  color: var(--app-muted);
+}
+
 @media (max-width: 1180px) {
   .builder-layout,
   .wizard-layout {
@@ -4221,6 +4443,15 @@ input[type="file"] {
     display: block;
   }
 
+  .style-controls-section {
+    order: 1;
+  }
+
+  .style-responsive-preview {
+    position: static;
+    order: 2;
+  }
+
   .wizard-heading {
     padding: 0;
   }
@@ -4328,23 +4559,51 @@ input[type="file"] {
   }
 
   .template-preview-backdrop {
-    padding: 12px;
+    place-items: stretch;
+    padding: 0;
   }
 
   .template-preview-dialog {
     width: 100%;
-    max-height: calc(100dvh - 24px);
+    height: 100dvh;
+    max-height: none;
     gap: 10px;
-    padding: 12px;
-    border-radius: 17px;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+  }
+
+  .template-preview-dialog-header {
+    min-height: 46px;
+  }
+
+  .template-preview-dialog-header button {
+    min-height: 42px;
+    padding: 0 12px;
   }
 
   .template-large-preview-stage {
     padding: 8px;
+    overscroll-behavior: contain;
   }
 
   .template-large-preview-stage .resume-page {
     zoom: 0.38;
+  }
+
+  .template-preview-actions {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    padding-top: 2px;
+    background: #ffffff;
+  }
+
+  .template-preview-exit-button,
+  .template-preview-use-button {
+    min-height: 48px;
   }
 
   .field textarea {
@@ -4983,6 +5242,24 @@ input[type="file"] {
   border-radius: 18px;
 }
 
+.resume-export-scope .template-consultant {
+  border-left-width: 16px;
+}
+
+.resume-export-scope .template-ribbon {
+  border-left-width: 30px;
+}
+
+.resume-export-scope .template-spotlight .cv-section,
+.resume-export-scope .template-studio .cv-section {
+  padding: 14px;
+}
+
+.resume-export-scope .template-studio .cv-sidebar {
+  padding: 16px;
+  border-radius: 0;
+}
+
 .resume-export-scope .item-title-row {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
@@ -4990,6 +5267,7 @@ input[type="file"] {
 
 .resume-export-scope .item-title-row .inline-meta-row {
   justify-content: flex-end;
+  flex-wrap: nowrap;
   text-align: right;
 }
 
@@ -5262,6 +5540,7 @@ input[type="file"] {
 }
 
 @media (max-width: 420px) {
+  .template-large-preview-stage.print-preview-scope .resume-page,
   .style-preview-stage.print-preview-scope .resume-page,
   .wizard-preview-stage.print-preview-scope .resume-page {
     zoom: 0.38;

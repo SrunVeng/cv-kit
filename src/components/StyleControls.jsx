@@ -3,7 +3,7 @@ import { colorPalette, densityOptions, fontPairings } from '../data/templates.js
 
 function StyleControls({ style, onChange }) {
   return (
-    <section className="editor-section" aria-labelledby="style-heading">
+    <section className="editor-section style-controls-section" aria-labelledby="style-heading">
       <div className="section-title-row">
         <div>
           <p className="eyebrow">Design</p>

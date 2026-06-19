@@ -1,4 +1,5 @@
 const draftStorageKey = 'khmer-cv-session-draft-v1';
+const styleStatusVersion = 2;
 
 export function loadResumeDraft() {
   try {
@@ -11,7 +12,7 @@ export function loadResumeDraft() {
     return {
       resume: draft.resume,
       style: draft.style,
-      interactedStyleFields: draft.interactedStyleFields ?? {},
+      interactedStyleFields: normalizeInteractedStyleFields(draft),
       isPreviewComplete: Boolean(draft.isPreviewComplete),
       currentStep: clampStep(draft.currentStep),
     };
@@ -21,18 +22,23 @@ export function loadResumeDraft() {
 }
 
 export function saveResumeDraft(draft) {
+  const versionedDraft = {
+    ...draft,
+    styleStatusVersion,
+  };
+
   try {
-    window.sessionStorage.setItem(draftStorageKey, JSON.stringify(draft));
+    window.sessionStorage.setItem(draftStorageKey, JSON.stringify(versionedDraft));
   } catch {
     try {
       window.sessionStorage.setItem(
         draftStorageKey,
         JSON.stringify({
-          ...draft,
+          ...versionedDraft,
           resume: {
-            ...draft.resume,
+            ...versionedDraft.resume,
             personal: {
-              ...draft.resume.personal,
+              ...versionedDraft.resume.personal,
               photo: '',
             },
           },
@@ -50,6 +56,13 @@ export function clearResumeDraft() {
   } catch {
     // Nothing else is required when storage is unavailable.
   }
+}
+
+function normalizeInteractedStyleFields(draft) {
+  const fields = draft.interactedStyleFields ?? {};
+  if (draft.styleStatusVersion === styleStatusVersion) return fields;
+
+  return fields.templateId ? { templateId: true } : {};
 }
 
 function isValidDraft(draft) {

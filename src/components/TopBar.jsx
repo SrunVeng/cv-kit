@@ -1,5 +1,5 @@
 import { HeartHandshake } from 'lucide-react';
-import logo from '../assets/khmer-cv-logo-small.png';
+import logo from '../assets/khmer-cv-logo-user-small.png';
 
 function TopBar({ onDonate, onDonateIntent }) {
   return (

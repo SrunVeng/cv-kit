@@ -1,4 +1,4 @@
-import logo from '../assets/khmer-cv-logo-small.png';
+import logo from '../assets/khmer-cv-logo-user-small.png';
 
 function AppFooter() {
   const year = new Date().getFullYear();
@@ -15,8 +15,7 @@ function AppFooter() {
         </div>
 
         <div className="footer-copy">
-          <p>© {year} Khmer-CV. Developed by Veng Srun. All rights reserved.</p>
-          <p lang="km">បង្កើតដោយ វេង ស្រ៊ុន • សូមអរគុណសម្រាប់ការគាំទ្រ។</p>
+          <p>© {year} Khmer-CV. All rights reserved.</p>
         </div>
       </div>
     </footer>

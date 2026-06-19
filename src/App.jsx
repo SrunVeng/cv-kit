@@ -166,8 +166,8 @@ function App() {
     [resume, style, interactedStyleFields, isPreviewComplete],
   );
   const startedSteps = useMemo(
-    () => getStartedSteps(resume, interactedStyleFields, isPreviewComplete),
-    [resume, interactedStyleFields, isPreviewComplete],
+    () => getStartedSteps(resume, style, interactedStyleFields, isPreviewComplete),
+    [resume, style, interactedStyleFields, isPreviewComplete],
   );
   const resumeContext = useMemo(() => getResumeContext(resume), [resume]);
   const getStepStatus = (stepId) => {
@@ -1072,12 +1072,13 @@ function getCompletedSteps(resume, style, interactedStyleFields, isPreviewComple
       startedCertifications.every((item) => hasAllItemValues(item, ['title', 'issuer', 'year'])),
     style:
       ['accentColor', 'fontPairing', 'density'].every((field) => interactedStyleFields[field]) &&
+      hasStyleChanges(style) &&
       hasAllText([style.accentColor, style.fontPairing, style.density]),
     preview: isPreviewComplete,
   };
 }
 
-function getStartedSteps(resume, interactedStyleFields, isPreviewComplete) {
+function getStartedSteps(resume, style, interactedStyleFields, isPreviewComplete) {
   return {
     template: Boolean(interactedStyleFields.templateId),
     identity: hasAllOrSomeText([
@@ -1109,9 +1110,17 @@ function getStartedSteps(resume, interactedStyleFields, isPreviewComplete) {
         ['name', 'role', 'start', 'end', 'summary', 'highlights'],
       ).length > 0 ||
       getStartedItems(resume.certifications, ['title', 'issuer', 'year']).length > 0,
-    style: ['accentColor', 'fontPairing', 'density'].some((field) => interactedStyleFields[field]),
+    style:
+      ['accentColor', 'fontPairing', 'density'].some((field) => interactedStyleFields[field]) &&
+      hasStyleChanges(style),
     preview: isPreviewComplete,
   };
+}
+
+function hasStyleChanges(style) {
+  return ['accentColor', 'fontPairing', 'density'].some(
+    (field) => style[field] !== defaultStyle[field],
+  );
 }
 
 function isSectionComplete(items, allKeys, requiredKeys) {
