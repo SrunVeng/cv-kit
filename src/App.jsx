@@ -8,19 +8,25 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Award,
   BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
+  Crop,
   Download,
   FolderKanban,
   GraduationCap,
   ImagePlus,
+  Move,
   RefreshCcw,
+  RotateCcw,
+  ScanFace,
   Sparkles,
   Trash2,
   UserRound,
+  ZoomIn,
 } from 'lucide-react';
 import { Field, PhoneField, TextareaField } from './components/FormFields.jsx';
 import AppFooter from './components/AppFooter.jsx';
@@ -32,7 +38,7 @@ import { templates } from './data/templates.js';
 import { generateResumeText, getSmartGeneratorName } from './utils/ai.js';
 import { clearResumeDraft, loadResumeDraft, saveResumeDraft } from './utils/draft.js';
 import { downloadResumePdf, preloadResumePdf } from './utils/export.js';
-import { prepareProfilePhoto } from './utils/image.js';
+import { cropProfilePhoto, prepareProfilePhoto } from './utils/image.js';
 import { createEmptyResume, createEntry } from './utils/resume.js';
 
 const loadDonationDialog = () => import('./components/DonationDialog.jsx');
@@ -237,6 +243,42 @@ function App() {
     }));
   };
 
+  const updatePhotoFraming = useCallback((framing) => {
+    setResume((current) => ({
+      ...current,
+      personal: {
+        ...current.personal,
+        photo: framing.photo ?? current.personal.photo,
+        photoPositionX: framing.positionX,
+        photoPositionY: framing.positionY,
+        photoZoom: framing.zoom,
+      },
+    }));
+  }, []);
+
+  const removeProfilePhoto = () => {
+    photoUploadIdRef.current += 1;
+    setResume((current) => ({
+      ...current,
+      personal: {
+        ...current.personal,
+        photo: '',
+        photoSource: '',
+        photoSourceWidth: 0,
+        photoSourceHeight: 0,
+        photoRevision: 0,
+        photoPositionX: 50,
+        photoPositionY: 40,
+        photoZoom: 1,
+        photoSmartX: 50,
+        photoSmartY: 40,
+        photoSmartZoom: 1,
+        photoSmartPositioned: false,
+      },
+    }));
+    setPhotoState({ isProcessing: false, error: '' });
+  };
+
   const updateStyle = (field, value) => {
     setInteractedStyleFields((current) => (
       current[field] ? current : { ...current, [field]: true }
@@ -286,7 +328,27 @@ function App() {
       const optimizedPhoto = await prepareProfilePhoto(file);
       if (uploadId !== photoUploadIdRef.current) return;
 
-      updatePersonal('photo', optimizedPhoto);
+      const croppedPhoto = await cropProfilePhoto(optimizedPhoto.src, optimizedPhoto);
+      if (uploadId !== photoUploadIdRef.current) return;
+
+      setResume((current) => ({
+        ...current,
+        personal: {
+          ...current.personal,
+          photo: croppedPhoto,
+          photoSource: optimizedPhoto.src,
+          photoSourceWidth: optimizedPhoto.width,
+          photoSourceHeight: optimizedPhoto.height,
+          photoRevision: (current.personal.photoRevision || 0) + 1,
+          photoPositionX: optimizedPhoto.positionX,
+          photoPositionY: optimizedPhoto.positionY,
+          photoZoom: optimizedPhoto.zoom,
+          photoSmartX: optimizedPhoto.positionX,
+          photoSmartY: optimizedPhoto.positionY,
+          photoSmartZoom: optimizedPhoto.zoom,
+          photoSmartPositioned: optimizedPhoto.smartPositioned,
+        },
+      }));
       setPhotoState({ isProcessing: false, error: '' });
     } catch (error) {
       if (uploadId !== photoUploadIdRef.current) return;
@@ -534,6 +596,8 @@ function App() {
                   style,
                   updateItem,
                   updatePersonal,
+                  updatePhotoFraming,
+                  removeProfilePhoto,
                   updateStyle,
                   updateTags,
                   addItem,
@@ -627,6 +691,8 @@ function renderStepContent({
   style,
   updateItem,
   updatePersonal,
+  updatePhotoFraming,
+  removeProfilePhoto,
   updateStyle,
   updateTags,
   addItem,
@@ -656,7 +722,8 @@ function renderStepContent({
           <PhotoUploader
             personal={resume.personal}
             onPhotoUpload={handlePhotoUpload}
-            onRemovePhoto={() => updatePersonal('photo', '')}
+            onPhotoAdjust={updatePhotoFraming}
+            onRemovePhoto={removeProfilePhoto}
             photoState={photoState}
           />
           <div className="field-grid">
@@ -993,56 +1060,413 @@ function AiAssistantDialog({ assistant, onChange, onClose, onGenerate, onApply }
   );
 }
 
-function PhotoUploader({ personal, onPhotoUpload, onRemovePhoto, photoState }) {
+function PhotoUploader({ personal, onPhotoUpload, onPhotoAdjust, onRemovePhoto, photoState }) {
+  const photoSource = personal.photoSource || personal.photo;
+  const [isEditing, setIsEditing] = useState(false);
+  const [framing, setFraming] = useState(() => getPhotoFraming(personal));
+  const [sourceSize, setSourceSize] = useState(() => getPhotoSourceSize(personal));
+  const [isRenderingCrop, setIsRenderingCrop] = useState(false);
+  const [cropError, setCropError] = useState('');
+  const lastPhotoSourceRef = useRef(photoSource);
+  const lastPhotoRevisionRef = useRef(personal.photoRevision || 0);
+  const originalCropRef = useRef(null);
+  const cropRequestRef = useRef(0);
+  const dragRef = useRef(null);
+  const pinchRef = useRef(null);
+  const activePointersRef = useRef(new Map());
+
+  useEffect(() => {
+    if (
+      photoSource
+      && (
+        photoSource !== lastPhotoSourceRef.current
+        || (personal.photoRevision || 0) !== lastPhotoRevisionRef.current
+      )
+    ) {
+      const nextFraming = getPhotoFraming(personal);
+      setFraming(nextFraming);
+      setSourceSize(getPhotoSourceSize(personal));
+      originalCropRef.current = { ...nextFraming, photo: personal.photo };
+      setCropError('');
+      setIsEditing(true);
+    }
+    if (!photoSource) setIsEditing(false);
+    lastPhotoSourceRef.current = photoSource;
+    lastPhotoRevisionRef.current = personal.photoRevision || 0;
+  }, [personal, photoSource]);
+
+  useEffect(() => {
+    if (!isEditing || !photoSource) return undefined;
+
+    const requestId = ++cropRequestRef.current;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsRenderingCrop(true);
+        const previewPhoto = await cropProfilePhoto(photoSource, framing, 540);
+        if (requestId !== cropRequestRef.current) return;
+        onPhotoAdjust({ ...framing, photo: previewPhoto });
+        setCropError('');
+      } catch (error) {
+        if (requestId !== cropRequestRef.current) return;
+        setCropError(error?.message || 'Unable to update the crop preview.');
+      } finally {
+        if (requestId === cropRequestRef.current) setIsRenderingCrop(false);
+      }
+    }, 70);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [framing, isEditing, onPhotoAdjust, photoSource]);
+
+  const openEditor = () => {
+    const nextFraming = getPhotoFraming(personal);
+    originalCropRef.current = { ...nextFraming, photo: personal.photo };
+    setFraming(nextFraming);
+    setSourceSize(getPhotoSourceSize(personal));
+    setCropError('');
+    setIsEditing(true);
+  };
+
+  const resetFraming = () => {
+    setFraming({
+      positionX: clampNumber(personal.photoSmartX, 0, 100, 50),
+      positionY: clampNumber(personal.photoSmartY, 0, 100, 40),
+      zoom: clampNumber(personal.photoSmartZoom, 1, 2.5, 1),
+    });
+  };
+
+  const beginDrag = (event) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    dragRef.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      framing,
+    };
+
+    if (activePointersRef.current.size === 2) {
+      const [first, second] = [...activePointersRef.current.values()];
+      pinchRef.current = {
+        distance: Math.hypot(second.x - first.x, second.y - first.y),
+        zoom: framing.zoom,
+      };
+    }
+  };
+
+  const dragPhoto = (event) => {
+    if (!activePointersRef.current.has(event.pointerId)) return;
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointersRef.current.size >= 2 && pinchRef.current) {
+      const [first, second] = [...activePointersRef.current.values()];
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      const zoom = pinchRef.current.zoom * distance / Math.max(1, pinchRef.current.distance);
+      setFraming((current) => ({
+        ...current,
+        zoom: clampNumber(zoom, 1, 2.5, 1),
+      }));
+      return;
+    }
+
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const shortestSide = Math.max(1, Math.min(sourceSize.width, sourceSize.height));
+    const displayedWidthRatio = (sourceSize.width / shortestSide) * drag.framing.zoom;
+    const displayedHeightRatio = (sourceSize.height / shortestSide) * drag.framing.zoom;
+    const xChange = ((event.clientX - drag.clientX) / bounds.width) * 100 / displayedWidthRatio;
+    const yChange = ((event.clientY - drag.clientY) / bounds.height) * 100 / displayedHeightRatio;
+    setFraming({
+      ...drag.framing,
+      positionX: clampNumber(drag.framing.positionX - xChange, 0, 100, 50),
+      positionY: clampNumber(drag.framing.positionY - yChange, 0, 100, 40),
+    });
+  };
+
+  const endDrag = (event) => {
+    activePointersRef.current.delete(event.pointerId);
+    pinchRef.current = null;
+    if (dragRef.current?.pointerId === event.pointerId) {
+      dragRef.current = null;
+    }
+  };
+
+  const previewStyle = getCropPreviewStyle(sourceSize, framing);
+
+  const cancelEditing = () => {
+    cropRequestRef.current += 1;
+    if (originalCropRef.current) onPhotoAdjust(originalCropRef.current);
+    setIsRenderingCrop(false);
+    setCropError('');
+    setIsEditing(false);
+  };
+
+  const applyCrop = async () => {
+    const requestId = ++cropRequestRef.current;
+    setIsRenderingCrop(true);
+    setCropError('');
+
+    try {
+      const finalPhoto = await cropProfilePhoto(photoSource, framing, 720);
+      if (requestId !== cropRequestRef.current) return;
+      onPhotoAdjust({ ...framing, photo: finalPhoto });
+      originalCropRef.current = { ...framing, photo: finalPhoto };
+      setIsEditing(false);
+    } catch (error) {
+      if (requestId !== cropRequestRef.current) return;
+      setCropError(error?.message || 'Unable to apply this crop.');
+    } finally {
+      if (requestId === cropRequestRef.current) setIsRenderingCrop(false);
+    }
+  };
+
+  const removePhoto = () => {
+    cropRequestRef.current += 1;
+    setIsRenderingCrop(false);
+    setCropError('');
+    setIsEditing(false);
+    onRemovePhoto();
+  };
+
+  useEffect(() => {
+    if (!isEditing) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') cancelEditing();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isEditing]);
+
+  const selectPhoto = (event) => {
+    onPhotoUpload(event.target.files?.[0]);
+    event.target.value = '';
+  };
+
   return (
     <div className="photo-uploader">
-      <label className={`photo-uploader-target ${photoState.isProcessing ? 'processing' : ''}`}>
-        <span className="photo-frame">
-          {personal.photo ? (
+      {personal.photo ? (
+        <div className={`photo-uploader-target has-photo ${photoState.isProcessing ? 'processing' : ''}`}>
+          <button
+            className="photo-frame photo-edit-trigger"
+            type="button"
+            onClick={openEditor}
+            disabled={photoState.isProcessing}
+            aria-label="Edit photo crop"
+          >
             <img src={personal.photo} alt="" />
-          ) : (
+            <span className="photo-edit-overlay" aria-hidden="true">
+              <Crop size={14} />
+              <span>Edit</span>
+            </span>
+          </button>
+          <label className="photo-upload-choice">
+            <span>
+              <strong>{photoState.isProcessing ? 'Optimizing photo…' : 'Change photo'}</strong>
+              <small>Click the photo to crop, or choose a different image.</small>
+            </span>
+            <ImagePlus size={20} aria-hidden="true" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={photoState.isProcessing}
+              onChange={selectPhoto}
+            />
+          </label>
+        </div>
+      ) : (
+        <label className={`photo-uploader-target ${photoState.isProcessing ? 'processing' : ''}`}>
+          <span className="photo-frame">
             <span className="photo-placeholder" aria-hidden="true">
               <UserRound size={34} />
             </span>
-          )}
-        </span>
-        <span>
-          <strong>
-            {photoState.isProcessing
-              ? 'Optimizing photo…'
-              : personal.photo
-                ? 'Change photo'
-                : 'Upload photo'}
-          </strong>
-          <small>JPG, PNG, or WebP. Large images are optimized automatically.</small>
-        </span>
-        <ImagePlus size={20} aria-hidden="true" />
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          disabled={photoState.isProcessing}
-          onChange={(event) => {
-            onPhotoUpload(event.target.files?.[0]);
-            event.target.value = '';
-          }}
-        />
-      </label>
+          </span>
+          <span>
+            <strong>{photoState.isProcessing ? 'Optimizing photo…' : 'Upload photo'}</strong>
+            <small>JPG, PNG, or WebP. Large images are optimized automatically.</small>
+          </span>
+          <ImagePlus size={20} aria-hidden="true" />
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={photoState.isProcessing}
+            onChange={selectPhoto}
+          />
+        </label>
+      )}
       {photoState.error ? (
         <p className="photo-error" role="alert">{photoState.error}</p>
       ) : null}
       {personal.photo ? (
-        <button
-          className="photo-remove-button"
-          type="button"
-          onClick={onRemovePhoto}
-          disabled={photoState.isProcessing}
+        <div className="photo-action-row">
+          <button
+            className="photo-remove-button"
+            type="button"
+            onClick={removePhoto}
+            disabled={photoState.isProcessing}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            <span>Remove</span>
+          </button>
+        </div>
+      ) : null}
+
+      {photoSource && isEditing && typeof document !== 'undefined' ? createPortal(
+        <section
+          className="photo-crop-editor"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="photo-crop-heading"
         >
-          <Trash2 size={16} aria-hidden="true" />
-          <span>Remove</span>
-        </button>
+          <header className="photo-crop-header">
+            <button type="button" onClick={cancelEditing}>Cancel</button>
+            <div>
+              <p>Profile photo</p>
+              <h3 id="photo-crop-heading">Move and Scale</h3>
+            </div>
+            <button type="button" onClick={applyCrop} disabled={isRenderingCrop}>
+              {isRenderingCrop ? 'Saving…' : 'Done'}
+            </button>
+          </header>
+
+          <div className="photo-crop-stage">
+            <div
+              className="photo-crop-viewport"
+              onPointerDown={beginDrag}
+              onPointerMove={dragPhoto}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onWheel={(event) => {
+                event.preventDefault();
+                const direction = event.deltaY > 0 ? -0.08 : 0.08;
+                setFraming((current) => ({
+                  ...current,
+                  zoom: clampNumber(current.zoom + direction, 1, 2.5, 1),
+                }));
+              }}
+              onDoubleClick={resetFraming}
+              onKeyDown={(event) => {
+                const changes = {
+                  ArrowLeft: { positionX: -2 },
+                  ArrowRight: { positionX: 2 },
+                  ArrowUp: { positionY: -2 },
+                  ArrowDown: { positionY: 2 },
+                }[event.key];
+                if (!changes) return;
+                event.preventDefault();
+                setFraming((current) => ({
+                  ...current,
+                  positionX: clampNumber(current.positionX + (changes.positionX || 0), 0, 100, 50),
+                  positionY: clampNumber(current.positionY + (changes.positionY || 0), 0, 100, 40),
+                }));
+              }}
+              role="img"
+              tabIndex="0"
+              aria-label="Photo crop preview. Drag to reposition, pinch or scroll to zoom, or use arrow keys."
+            >
+              <img
+                src={photoSource}
+                alt=""
+                style={previewStyle}
+                draggable="false"
+                onLoad={(event) => {
+                  const image = event.currentTarget;
+                  if (image.naturalWidth && image.naturalHeight) {
+                    setSourceSize({ width: image.naturalWidth, height: image.naturalHeight });
+                  }
+                }}
+              />
+              <span className="photo-crop-grid" aria-hidden="true" />
+            </div>
+            <p className="photo-crop-instructions">
+              <Move size={16} aria-hidden="true" />
+              Drag to move · Pinch or scroll to zoom
+            </p>
+          </div>
+
+          <div className="photo-crop-controls">
+            <label>
+              <span><ZoomIn size={15} aria-hidden="true" /> Zoom</span>
+              <input
+                type="range"
+                min="1"
+                max="2.5"
+                step="0.01"
+                value={framing.zoom}
+                onChange={(event) => setFraming((current) => ({
+                  ...current,
+                  zoom: Number(event.target.value),
+                }))}
+              />
+            </label>
+          </div>
+
+          {cropError ? <p className="photo-error" role="alert">{cropError}</p> : null}
+
+          <footer className="photo-crop-actions">
+            <button className="photo-reset-button" type="button" onClick={resetFraming}>
+              <RotateCcw size={15} aria-hidden="true" />
+              Reset
+            </button>
+            <span className="smart-crop-badge">
+              <ScanFace size={15} aria-hidden="true" />
+              {isRenderingCrop
+                ? 'Updating CV…'
+                : personal.photoSmartPositioned
+                  ? 'Face centered · Live preview'
+                  : 'Smart framing · Live preview'}
+            </span>
+          </footer>
+        </section>,
+        document.body,
       ) : null}
     </div>
   );
+}
+
+function getPhotoFraming(personal) {
+  return {
+    positionX: clampNumber(personal.photoPositionX, 0, 100, 50),
+    positionY: clampNumber(personal.photoPositionY, 0, 100, 40),
+    zoom: clampNumber(personal.photoZoom, 1, 2.5, 1),
+  };
+}
+
+function getPhotoSourceSize(personal) {
+  return {
+    width: clampNumber(personal.photoSourceWidth, 1, 10000, 1),
+    height: clampNumber(personal.photoSourceHeight, 1, 10000, 1),
+  };
+}
+
+function getCropPreviewStyle(sourceSize, framing) {
+  const shortestSide = Math.max(1, Math.min(sourceSize.width, sourceSize.height));
+  const width = (sourceSize.width / shortestSide) * framing.zoom * 100;
+  const height = (sourceSize.height / shortestSide) * framing.zoom * 100;
+  const desiredLeft = 50 - (framing.positionX / 100) * width;
+  const desiredTop = 50 - (framing.positionY / 100) * height;
+
+  return {
+    width: `${width}%`,
+    height: `${height}%`,
+    left: `${clampNumber(desiredLeft, 100 - width, 0, 0)}%`,
+    top: `${clampNumber(desiredTop, 100 - height, 0, 0)}%`,
+  };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
 }
 
 function getCompletedSteps(resume, style, interactedStyleFields, isPreviewComplete) {

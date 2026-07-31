@@ -19,7 +19,12 @@ const ResumePreview = memo(forwardRef(function ResumePreview({ resume, style, te
     <article ref={ref} className={className} style={{ '--accent': style.accentColor }}>
       <header className="cv-hero">
         <div className="cv-photo-wrap">
-          {personal.photo ? <img src={personal.photo} alt="" /> : <span>{initials(personal.fullName)}</span>}
+          {personal.photo ? (
+            <img
+              src={personal.photo}
+              alt={personal.fullName ? `${personal.fullName} profile` : 'Profile'}
+            />
+          ) : <span>{initials(personal.fullName)}</span>}
         </div>
         <div className="cv-title-block">
           <p className="cv-kicker">

@@ -40,6 +40,7 @@ export function saveResumeDraft(draft) {
             personal: {
               ...versionedDraft.resume.personal,
               photo: '',
+              photoSource: '',
             },
           },
         }),

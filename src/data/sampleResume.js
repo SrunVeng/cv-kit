@@ -10,6 +10,16 @@ export const sampleResume = {
     summary:
       'Designs and ships polished digital products across research, UX systems, and production React interfaces. Known for turning ambiguous product ideas into clean workflows that customers understand quickly.',
     photo: '',
+    photoSource: '',
+    photoSourceWidth: 0,
+    photoSourceHeight: 0,
+    photoRevision: 0,
+    photoPositionX: 50,
+    photoPositionY: 40,
+    photoZoom: 1,
+    photoSmartX: 50,
+    photoSmartY: 40,
+    photoSmartZoom: 1,
   },
   skills: [
     'Product Strategy',
