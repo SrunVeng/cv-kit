@@ -1074,6 +1074,7 @@ function PhotoUploader({ personal, onPhotoUpload, onPhotoAdjust, onRemovePhoto, 
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
   const activePointersRef = useRef(new Map());
+  const replaceInputRef = useRef(null);
 
   useEffect(() => {
     if (
@@ -1252,6 +1253,13 @@ function PhotoUploader({ personal, onPhotoUpload, onPhotoAdjust, onRemovePhoto, 
     event.target.value = '';
   };
 
+  const replacePhoto = (event) => {
+    cropRequestRef.current += 1;
+    setIsRenderingCrop(false);
+    setCropError('');
+    selectPhoto(event);
+  };
+
   return (
     <div className="photo-uploader">
       {personal.photo ? (
@@ -1333,8 +1341,12 @@ function PhotoUploader({ personal, onPhotoUpload, onPhotoAdjust, onRemovePhoto, 
               <p>Profile photo</p>
               <h3 id="photo-crop-heading">Move and Scale</h3>
             </div>
-            <button type="button" onClick={applyCrop} disabled={isRenderingCrop}>
-              {isRenderingCrop ? 'Saving…' : 'Done'}
+            <button
+              type="button"
+              onClick={applyCrop}
+              disabled={isRenderingCrop || photoState.isProcessing}
+            >
+              {photoState.isProcessing ? 'Replacing…' : isRenderingCrop ? 'Saving…' : 'Done'}
             </button>
           </header>
 
@@ -1413,13 +1425,33 @@ function PhotoUploader({ personal, onPhotoUpload, onPhotoAdjust, onRemovePhoto, 
           {cropError ? <p className="photo-error" role="alert">{cropError}</p> : null}
 
           <footer className="photo-crop-actions">
-            <button className="photo-reset-button" type="button" onClick={resetFraming}>
-              <RotateCcw size={15} aria-hidden="true" />
-              Reset
-            </button>
+            <div className="photo-crop-tool-group">
+              <button className="photo-reset-button" type="button" onClick={resetFraming}>
+                <RotateCcw size={15} aria-hidden="true" />
+                Reset
+              </button>
+              <button
+                className="photo-replace-button"
+                type="button"
+                onClick={() => replaceInputRef.current?.click()}
+                disabled={photoState.isProcessing}
+              >
+                <ImagePlus size={15} aria-hidden="true" />
+                <span>{photoState.isProcessing ? 'Replacing…' : 'Replace photo'}</span>
+              </button>
+              <input
+                ref={replaceInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={photoState.isProcessing}
+                onChange={replacePhoto}
+              />
+            </div>
             <span className="smart-crop-badge">
               <ScanFace size={15} aria-hidden="true" />
-              {isRenderingCrop
+              {photoState.isProcessing
+                ? 'Preparing new photo…'
+                : isRenderingCrop
                 ? 'Updating CV…'
                 : personal.photoSmartPositioned
                   ? 'Face centered · Live preview'

@@ -1749,7 +1749,14 @@ input[type="file"] {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.photo-reset-button {
+.photo-crop-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.photo-reset-button,
+.photo-replace-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1762,8 +1769,19 @@ input[type="file"] {
   font-weight: 900;
 }
 
-.photo-reset-button:hover {
+.photo-replace-button:disabled {
+  color: #636366;
+  cursor: wait;
+}
+
+.photo-reset-button:hover,
+.photo-replace-button:hover:not(:disabled) {
   color: #409cff;
+}
+
+.photo-replace-button:focus-visible {
+  outline: 2px solid #0a84ff;
+  outline-offset: 2px;
 }
 
 .photo-crop-editor .photo-error {
@@ -5468,6 +5486,16 @@ input[type="file"] {
   .smart-crop-badge {
     padding-inline: 8px;
     font-size: 0.66rem;
+  }
+
+  .photo-crop-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .photo-crop-tool-group {
+    justify-content: space-between;
+    width: 100%;
   }
 
   .resume-page {
