@@ -27,9 +27,9 @@ const ResumePreview = memo(forwardRef(function ResumePreview({ resume, style, te
           ) : <span>{initials(personal.fullName)}</span>}
         </div>
         <div className="cv-title-block">
-          <p className="cv-kicker">
-            <PreviewText value={personal.location} fallback="Open to opportunities" />
-          </p>
+          {hasText(personal.location) ? (
+            <p className="cv-kicker">{personal.location}</p>
+          ) : null}
           <h1>
             <PreviewText value={personal.fullName} fallback="Your Name" />
           </h1>
