@@ -1,24 +1,24 @@
-const draftStorageKey = 'khmer-cv-session-draft-v1';
+const draftStorageKey = 'khmer-cv-resume-draft-v2';
+const legacyDraftStorageKey = 'khmer-cv-session-draft-v1';
 const styleStatusVersion = 2;
 
 export function loadResumeDraft() {
-  try {
-    const savedValue = window.sessionStorage.getItem(draftStorageKey);
-    if (!savedValue) return null;
+  const savedDraft = readDraft('localStorage', draftStorageKey);
+  if (savedDraft) return normalizeDraft(savedDraft);
 
-    const draft = JSON.parse(savedValue);
-    if (!isValidDraft(draft)) return null;
+  const legacyDraft =
+    readDraft('sessionStorage', legacyDraftStorageKey) ??
+    readDraft('localStorage', legacyDraftStorageKey);
 
-    return {
-      resume: draft.resume,
-      style: draft.style,
-      interactedStyleFields: normalizeInteractedStyleFields(draft),
-      isPreviewComplete: Boolean(draft.isPreviewComplete),
-      currentStep: clampStep(draft.currentStep),
-    };
-  } catch {
-    return null;
+  if (!legacyDraft) return null;
+
+  const migrationStatus = saveResumeDraft(legacyDraft);
+  if (migrationStatus === 'persistent') {
+    removeDraft('sessionStorage', legacyDraftStorageKey);
+    removeDraft('localStorage', legacyDraftStorageKey);
   }
+
+  return normalizeDraft(legacyDraft);
 }
 
 export function saveResumeDraft(draft) {
@@ -27,36 +27,74 @@ export function saveResumeDraft(draft) {
     styleStatusVersion,
   };
 
-  try {
-    window.sessionStorage.setItem(draftStorageKey, JSON.stringify(versionedDraft));
-  } catch {
-    try {
-      window.sessionStorage.setItem(
-        draftStorageKey,
-        JSON.stringify({
-          ...versionedDraft,
-          resume: {
-            ...versionedDraft.resume,
-            personal: {
-              ...versionedDraft.resume.personal,
-              photo: '',
-              photoSource: '',
-            },
-          },
-        }),
-      );
-    } catch {
-      // The app remains usable when storage is unavailable or full.
-    }
-  }
+  if (writeDraft('localStorage', draftStorageKey, versionedDraft)) return 'persistent';
+
+  const lightweightDraft = removeDraftPhotos(versionedDraft);
+  if (writeDraft('localStorage', draftStorageKey, lightweightDraft)) return 'persistent';
+  if (writeDraft('sessionStorage', draftStorageKey, versionedDraft)) return 'session';
+  if (writeDraft('sessionStorage', draftStorageKey, lightweightDraft)) return 'session';
+
+  return 'unavailable';
 }
 
 export function clearResumeDraft() {
+  removeDraft('localStorage', draftStorageKey);
+  removeDraft('sessionStorage', draftStorageKey);
+  removeDraft('localStorage', legacyDraftStorageKey);
+  removeDraft('sessionStorage', legacyDraftStorageKey);
+}
+
+function normalizeDraft(draft) {
+  return {
+    resume: draft.resume,
+    style: draft.style,
+    interactedStyleFields: normalizeInteractedStyleFields(draft),
+    isPreviewComplete: Boolean(draft.isPreviewComplete),
+    currentStep: clampStep(draft.currentStep),
+  };
+}
+
+function readDraft(storageName, key) {
   try {
-    window.sessionStorage.removeItem(draftStorageKey);
+    const savedValue = window[storageName].getItem(key);
+    if (!savedValue) return null;
+
+    const draft = JSON.parse(savedValue);
+    return isValidDraft(draft) ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(storageName, key, draft) {
+  try {
+    window[storageName].setItem(key, JSON.stringify(draft));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeDraft(storageName, key) {
+  try {
+    window[storageName].removeItem(key);
   } catch {
     // Nothing else is required when storage is unavailable.
   }
+}
+
+function removeDraftPhotos(draft) {
+  return {
+    ...draft,
+    resume: {
+      ...draft.resume,
+      personal: {
+        ...draft.resume.personal,
+        photo: '',
+        photoSource: '',
+      },
+    },
+  };
 }
 
 function normalizeInteractedStyleFields(draft) {

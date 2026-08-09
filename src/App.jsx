@@ -22,6 +22,7 @@ import {
   Move,
   RefreshCcw,
   RotateCcw,
+  Save,
   ScanFace,
   Sparkles,
   Trash2,
@@ -154,6 +155,7 @@ function App() {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [aiAssistant, setAiAssistant] = useState(defaultAiAssistant);
   const [currentStep, setCurrentStep] = useState(() => savedDraft?.currentStep ?? 0);
+  const [draftSaveStatus, setDraftSaveStatus] = useState('saving');
   const previewRef = useRef(null);
   const photoUploadIdRef = useRef(0);
   const deferredResume = useDeferredValue(resume);
@@ -220,17 +222,26 @@ function App() {
   }, [isPreviewStep, preloadPdfAssets]);
 
   useEffect(() => {
-    const saveTimeout = window.setTimeout(() => {
-      saveResumeDraft({
-        resume,
-        style,
-        interactedStyleFields,
-        isPreviewComplete,
-        currentStep,
-      });
-    }, 250);
+    const draft = {
+      resume,
+      style,
+      interactedStyleFields,
+      isPreviewComplete,
+      currentStep,
+    };
+    const persistDraft = () => saveResumeDraft(draft);
+    const handlePageHide = () => persistDraft();
 
-    return () => window.clearTimeout(saveTimeout);
+    setDraftSaveStatus('saving');
+    const saveTimeout = window.setTimeout(() => {
+      setDraftSaveStatus(persistDraft());
+    }, 250);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      window.clearTimeout(saveTimeout);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
   }, [currentStep, interactedStyleFields, isPreviewComplete, resume, style]);
 
   const updatePersonal = (field, value) => {
@@ -564,6 +575,15 @@ function App() {
               </button>
             ))}
           </div>
+
+          <p
+            className={`wizard-draft-status ${
+              ['session', 'unavailable'].includes(draftSaveStatus) ? 'limited' : ''
+            }`}
+          >
+            <Save size={15} aria-hidden="true" />
+            <span>{getDraftSaveStatusLabel(draftSaveStatus)}</span>
+          </p>
 
           <button
             className="wizard-reset-button"
@@ -1624,6 +1644,13 @@ function getResumeContext(resume) {
     projects: resume.projects.slice(0, 3),
     certifications: resume.certifications.slice(0, 4),
   };
+}
+
+function getDraftSaveStatusLabel(status) {
+  if (status === 'persistent') return 'Saved automatically on this device';
+  if (status === 'session') return 'Saved until this tab closes';
+  if (status === 'unavailable') return 'Draft saving is unavailable';
+  return 'Saving your draft...';
 }
 
 export default App;

@@ -60,14 +60,26 @@ export async function downloadResumePdf(element, fileName) {
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const imageScale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-  const imageWidth = canvas.width * imageScale;
+  const imageScale = pageWidth / canvas.width;
+  const imageWidth = pageWidth;
   const imageHeight = canvas.height * imageScale;
-  const imageX = (pageWidth - imageWidth) / 2;
-  const imageY = (pageHeight - imageHeight) / 2;
+  const pageCount = Math.max(1, Math.ceil(imageHeight / pageHeight));
   const imageData = canvas.toDataURL('image/jpeg', jpegQuality);
 
-  pdf.addImage(imageData, 'JPEG', imageX, imageY, imageWidth, imageHeight, undefined, 'SLOW');
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+    if (pageIndex > 0) pdf.addPage();
+
+    pdf.addImage(
+      imageData,
+      'JPEG',
+      0,
+      -(pageIndex * pageHeight),
+      imageWidth,
+      imageHeight,
+      'resume-canvas',
+      'SLOW',
+    );
+  }
 
   await savePdfBlob(pdf.output('blob'), `${slugify(fileName)}.pdf`);
 }

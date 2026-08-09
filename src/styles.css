@@ -1086,6 +1086,25 @@ input[type="file"] {
   font-weight: 850;
 }
 
+.wizard-draft-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.wizard-draft-status svg {
+  flex: 0 0 auto;
+}
+
+.wizard-draft-status.limited {
+  color: #9a6700;
+}
+
 .wizard-reset-button:hover {
   color: #881337;
   border-color: rgba(190, 18, 60, 0.42);
