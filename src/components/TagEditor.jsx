@@ -7,7 +7,7 @@ function TagEditor({ title, eyebrow, tags, onChange, placeholder }) {
   const addTag = () => {
     const value = draft.trim();
     if (!value || tags.includes(value)) return;
-    onChange([...tags, value]);
+    onChange([value, ...tags]);
     setDraft('');
   };
 

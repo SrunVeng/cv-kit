@@ -14,6 +14,9 @@ function SectionEditor({
   onGenerateText,
   resumeContext,
   sampleItems = [],
+  itemLabel = title,
+  addLabel = 'Add',
+  emptyMessage = '',
 }) {
   return (
     <section className="editor-section" aria-labelledby={`${section}-heading`}>
@@ -27,21 +30,27 @@ function SectionEditor({
         </div>
         <button className="icon-text-button" type="button" onClick={() => onAdd(section)}>
           <Plus size={16} aria-hidden="true" />
-          <span>Add</span>
+          <span>{addLabel}</span>
         </button>
       </div>
 
       <div className="entry-stack">
+        {!items.length && emptyMessage ? (
+          <div className="section-empty-state">
+            <Plus size={18} aria-hidden="true" />
+            <p>{emptyMessage}</p>
+          </div>
+        ) : null}
         {items.map((item, index) => (
           <article className="editor-item" key={item.id}>
             <div className="item-heading">
               <strong>
-                {title} {index + 1}
+                {itemLabel} {index + 1}
               </strong>
               <button
                 type="button"
                 onClick={() => onRemove(section, item.id)}
-                aria-label={`Remove ${title} ${index + 1}`}
+                aria-label={`Remove ${itemLabel} ${index + 1}`}
               >
                 <Trash2 size={16} aria-hidden="true" />
               </button>
@@ -66,7 +75,7 @@ function SectionEditor({
                             onClick={() =>
                               onGenerateText({
                                 type: `${section}-${field.key}`,
-                                label: `${title} ${index + 1} ${field.label}`,
+                                label: `${itemLabel} ${index + 1} ${field.label}`,
                                 currentValue: item[field.key] ?? '',
                                 context: {
                                   section,
@@ -100,7 +109,7 @@ function SectionEditor({
                             onClick={() =>
                               onGenerateText({
                                 type: `${section}-${field.key}`,
-                                label: `${title} ${index + 1} ${field.label}`,
+                                label: `${itemLabel} ${index + 1} ${field.label}`,
                                 currentValue: (item[field.key] ?? []).join('\n'),
                                 context: {
                                   section,

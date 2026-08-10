@@ -46,7 +46,12 @@ export function clearResumeDraft() {
 
 function normalizeDraft(draft) {
   return {
-    resume: draft.resume,
+    resume: {
+      ...draft.resume,
+      customSections: Array.isArray(draft.resume.customSections)
+        ? draft.resume.customSections
+        : [],
+    },
     style: draft.style,
     interactedStyleFields: normalizeInteractedStyleFields(draft),
     isPreviewComplete: Boolean(draft.isPreviewComplete),

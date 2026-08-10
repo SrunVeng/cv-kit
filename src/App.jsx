@@ -19,10 +19,10 @@ import {
   FolderKanban,
   GraduationCap,
   ImagePlus,
+  ListPlus,
   Move,
   RefreshCcw,
   RotateCcw,
-  Save,
   ScanFace,
   Sparkles,
   Trash2,
@@ -76,7 +76,7 @@ const wizardSteps = [
   { id: 'skills', label: 'Skills', eyebrow: 'Capabilities', title: 'Skills and languages' },
   { id: 'experience', label: 'Work', eyebrow: 'Experience', title: 'Work history' },
   { id: 'education', label: 'Education', eyebrow: 'Learning', title: 'Education' },
-  { id: 'extras', label: 'Extras', eyebrow: 'Portfolio', title: 'Projects and certificates' },
+  { id: 'extras', label: 'Extras', eyebrow: 'Portfolio', title: 'Projects, certificates, and more' },
   { id: 'style', label: 'Style', eyebrow: 'Design', title: 'Visual style' },
   { id: 'preview', label: 'Preview', eyebrow: 'Finish', title: 'Preview and download' },
 ];
@@ -87,6 +87,8 @@ const sectionConfigs = {
     title: 'Experience',
     eyebrow: 'Work',
     icon: BriefcaseBusiness,
+    itemLabel: 'Experience',
+    addLabel: 'Add experience',
     fields: [
       { key: 'role', label: 'Role', placeholder: 'e.g. Senior Product Designer' },
       { key: 'company', label: 'Company', placeholder: 'e.g. Northstar Labs' },
@@ -102,6 +104,8 @@ const sectionConfigs = {
     title: 'Education',
     eyebrow: 'Learning',
     icon: GraduationCap,
+    itemLabel: 'Education',
+    addLabel: 'Add education',
     fields: [
       { key: 'degree', label: 'Degree', placeholder: 'e.g. B.S. Computer Science' },
       { key: 'school', label: 'School', placeholder: 'e.g. University name' },
@@ -116,6 +120,8 @@ const sectionConfigs = {
     title: 'Projects',
     eyebrow: 'Portfolio',
     icon: FolderKanban,
+    itemLabel: 'Project',
+    addLabel: 'Add project',
     fields: [
       { key: 'name', label: 'Project name', placeholder: 'e.g. Portfolio Website' },
       { key: 'role', label: 'Role', placeholder: 'e.g. Designer and developer' },
@@ -130,10 +136,38 @@ const sectionConfigs = {
     title: 'Certifications',
     eyebrow: 'Proof',
     icon: Award,
+    itemLabel: 'Certificate',
+    addLabel: 'Add certificate',
     fields: [
       { key: 'title', label: 'Title', placeholder: 'e.g. AWS Certified Developer' },
       { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Amazon Web Services' },
       { key: 'year', label: 'Year', placeholder: 'e.g. 2026' },
+    ],
+  },
+  customSections: {
+    section: 'customSections',
+    title: 'Additional sections',
+    eyebrow: 'Custom',
+    icon: ListPlus,
+    itemLabel: 'Section',
+    addLabel: 'Add section',
+    emptyMessage:
+      'Add references, awards, volunteer work, publications, or any other section you need.',
+    fields: [
+      { key: 'sectionTitle', label: 'Section name', placeholder: 'e.g. References' },
+      { key: 'title', label: 'Name or title', placeholder: 'e.g. Sok Dara' },
+      {
+        key: 'subtitle',
+        label: 'Role or organization',
+        placeholder: 'e.g. Engineering Manager, Acme Co.',
+      },
+      {
+        key: 'details',
+        label: 'Details',
+        type: 'textarea',
+        rows: 4,
+        placeholder: 'Add phone, email, relationship, or a short description.',
+      },
     ],
   },
 };
@@ -155,7 +189,6 @@ function App() {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [aiAssistant, setAiAssistant] = useState(defaultAiAssistant);
   const [currentStep, setCurrentStep] = useState(() => savedDraft?.currentStep ?? 0);
-  const [draftSaveStatus, setDraftSaveStatus] = useState('saving');
   const previewRef = useRef(null);
   const photoUploadIdRef = useRef(0);
   const deferredResume = useDeferredValue(resume);
@@ -232,9 +265,8 @@ function App() {
     const persistDraft = () => saveResumeDraft(draft);
     const handlePageHide = () => persistDraft();
 
-    setDraftSaveStatus('saving');
     const saveTimeout = window.setTimeout(() => {
-      setDraftSaveStatus(persistDraft());
+      persistDraft();
     }, 250);
     window.addEventListener('pagehide', handlePageHide);
 
@@ -311,7 +343,7 @@ function App() {
   const addItem = (section) => {
     setResume((current) => ({
       ...current,
-      [section]: [...current[section], createEntry(section)],
+      [section]: [createEntry(section), ...current[section]],
     }));
   };
 
@@ -508,10 +540,10 @@ function App() {
               <RefreshCcw size={22} />
             </span>
             <div className="confirm-copy">
-              <p className="eyebrow">Reset CV</p>
-              <h2 id="reset-confirm-title">Start over?</h2>
+              <p className="eyebrow">Permanent action</p>
+              <h2 id="reset-confirm-title">Reset everything?</h2>
               <p id="reset-confirm-description">
-                This will clear your current edits and return to a blank CV at step 1.
+                This removes all CV content, photos, custom sections, and styling from this device.
               </p>
             </div>
             <div className="confirm-actions">
@@ -521,10 +553,10 @@ function App() {
                 autoFocus
                 onClick={() => setIsResetConfirmOpen(false)}
               >
-                No
+                Keep my CV
               </button>
               <button className="confirm-button danger" type="button" onClick={handleReset}>
-                Yes, reset
+                Reset everything
               </button>
             </div>
           </section>
@@ -575,30 +607,22 @@ function App() {
               </button>
             ))}
           </div>
-
-          <p
-            className={`wizard-draft-status ${
-              ['session', 'unavailable'].includes(draftSaveStatus) ? 'limited' : ''
-            }`}
-          >
-            <Save size={15} aria-hidden="true" />
-            <span>{getDraftSaveStatusLabel(draftSaveStatus)}</span>
-          </p>
-
-          <button
-            className="wizard-reset-button"
-            type="button"
-            onClick={() => setIsResetConfirmOpen(true)}
-          >
-            <RefreshCcw size={15} aria-hidden="true" />
-            <span>Start over</span>
-          </button>
         </aside>
 
         <section className="wizard-main" aria-labelledby="wizard-heading">
           <header className="wizard-heading">
-            <p className="eyebrow">{currentStepData.eyebrow}</p>
-            <h1 id="wizard-heading">{currentStepData.title}</h1>
+            <div>
+              <p className="eyebrow">{currentStepData.eyebrow}</p>
+              <h1 id="wizard-heading">{currentStepData.title}</h1>
+            </div>
+            <button
+              className="wizard-reset-button"
+              type="button"
+              onClick={() => setIsResetConfirmOpen(true)}
+            >
+              <RefreshCcw size={15} aria-hidden="true" />
+              <span>Reset everything</span>
+            </button>
           </header>
 
           <div className={`wizard-step-content ${showSidePreview ? 'with-preview' : ''}`}>
@@ -901,6 +925,13 @@ function renderStepContent({
             onAdd={addItem}
             onRemove={removeItem}
             sampleItems={sampleResume.certifications}
+          />
+          <SectionEditor
+            {...sectionConfigs.customSections}
+            items={resume.customSections}
+            onChange={updateItem}
+            onAdd={addItem}
+            onRemove={removeItem}
           />
         </>
       );
@@ -1524,7 +1555,14 @@ function clampNumber(value, min, max, fallback) {
 function getCompletedSteps(resume, style, interactedStyleFields, isPreviewComplete) {
   const startedProjects = getStartedItems(resume.projects, ['name', 'role', 'start', 'end', 'summary', 'highlights']);
   const startedCertifications = getStartedItems(resume.certifications, ['title', 'issuer', 'year']);
-  const hasStartedExtra = startedProjects.length > 0 || startedCertifications.length > 0;
+  const startedCustomSections = getStartedItems(
+    resume.customSections,
+    ['sectionTitle', 'title', 'subtitle', 'details'],
+  );
+  const hasStartedExtra =
+    startedProjects.length > 0 ||
+    startedCertifications.length > 0 ||
+    startedCustomSections.length > 0;
 
   return {
     template: Boolean(interactedStyleFields.templateId) && hasText(style.templateId),
@@ -1545,7 +1583,10 @@ function getCompletedSteps(resume, style, interactedStyleFields, isPreviewComple
     extras:
       hasStartedExtra &&
       startedProjects.every((item) => hasAllItemValues(item, ['name', 'role', 'summary'])) &&
-      startedCertifications.every((item) => hasAllItemValues(item, ['title', 'issuer', 'year'])),
+      startedCertifications.every((item) => hasAllItemValues(item, ['title', 'issuer', 'year'])) &&
+      startedCustomSections.every((item) =>
+        hasAllItemValues(item, ['sectionTitle', 'title', 'details']),
+      ),
     style:
       ['accentColor', 'fontPairing', 'density'].every((field) => interactedStyleFields[field]) &&
       hasStyleChanges(style) &&
@@ -1585,7 +1626,11 @@ function getStartedSteps(resume, style, interactedStyleFields, isPreviewComplete
         resume.projects,
         ['name', 'role', 'start', 'end', 'summary', 'highlights'],
       ).length > 0 ||
-      getStartedItems(resume.certifications, ['title', 'issuer', 'year']).length > 0,
+      getStartedItems(resume.certifications, ['title', 'issuer', 'year']).length > 0 ||
+      getStartedItems(
+        resume.customSections,
+        ['sectionTitle', 'title', 'subtitle', 'details'],
+      ).length > 0,
     style:
       ['accentColor', 'fontPairing', 'density'].some((field) => interactedStyleFields[field]) &&
       hasStyleChanges(style),
@@ -1643,14 +1688,8 @@ function getResumeContext(resume) {
     education: resume.education.slice(0, 3),
     projects: resume.projects.slice(0, 3),
     certifications: resume.certifications.slice(0, 4),
+    customSections: resume.customSections.slice(0, 6),
   };
-}
-
-function getDraftSaveStatusLabel(status) {
-  if (status === 'persistent') return 'Saved automatically on this device';
-  if (status === 'session') return 'Saved until this tab closes';
-  if (status === 'unavailable') return 'Draft saving is unavailable';
-  return 'Saving your draft...';
 }
 
 export default App;

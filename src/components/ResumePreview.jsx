@@ -8,6 +8,7 @@ const monthYearFormatter = new Intl.DateTimeFormat('en', {
 
 const ResumePreview = memo(forwardRef(function ResumePreview({ resume, style, template }, ref) {
   const { personal } = resume;
+  const customSectionGroups = groupCustomSections(resume.customSections);
   const className = [
     'resume-page',
     template.className,
@@ -121,6 +122,14 @@ const ResumePreview = memo(forwardRef(function ResumePreview({ resume, style, te
               />
             ))}
           </PreviewSection>
+
+          {customSectionGroups.map((group) => (
+            <PreviewSection key={group.key} title={group.title}>
+              {group.items.map((item) => (
+                <CustomItem key={item.id} item={item} />
+              ))}
+            </PreviewSection>
+          ))}
         </main>
       </div>
     </article>
@@ -214,6 +223,18 @@ function TimelineItem({ item, titleKey, subtitleKey, labels }) {
   );
 }
 
+function CustomItem({ item }) {
+  return (
+    <article className="custom-item">
+      <strong>
+        <PreviewText value={item.title} fallback="Name or title" />
+      </strong>
+      {hasText(item.subtitle) ? <span>{item.subtitle}</span> : null}
+      {hasText(item.details) ? <p>{item.details}</p> : null}
+    </article>
+  );
+}
+
 function MetaRow({ items, small = false }) {
   const Tag = small ? 'small' : 'span';
 
@@ -238,6 +259,27 @@ function hasItems(items) {
 
 function hasAnyPersonalContact(personal) {
   return [personal.email, personal.phone, personal.location, personal.website].some(hasText);
+}
+
+function groupCustomSections(items) {
+  const groups = [];
+  const groupIndexes = new Map();
+
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const title = String(item.sectionTitle ?? '').trim() || 'Additional';
+    const groupKey = title.toLocaleLowerCase();
+    const existingIndex = groupIndexes.get(groupKey);
+
+    if (existingIndex === undefined) {
+      groupIndexes.set(groupKey, groups.length);
+      groups.push({ key: `${groupKey}-${groups.length}`, title, items: [item] });
+      return;
+    }
+
+    groups[existingIndex].items.push(item);
+  });
+
+  return groups;
 }
 
 function hasText(value) {

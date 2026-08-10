@@ -33,6 +33,13 @@ const factories = {
     issuer: '',
     year: '',
   }),
+  customSections: () => ({
+    id: crypto.randomUUID(),
+    sectionTitle: '',
+    title: '',
+    subtitle: '',
+    details: '',
+  }),
 };
 
 export function createEntry(section) {
@@ -68,5 +75,6 @@ export function createEmptyResume() {
     education: [createEntry('education')],
     projects: [createEntry('projects')],
     certifications: [createEntry('certifications')],
+    customSections: [],
   };
 }
